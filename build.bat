@@ -1,1 +1,1 @@
-msbuild /p:configuration=debug /p:platform=x64
+msbuild %1 /p:configuration=debug /p:platform=x64
