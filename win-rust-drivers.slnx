@@ -6,7 +6,4 @@
   <Project Path="create_pend/create_pend.vcxproj">
     <Deploy />
   </Project>
-  <Project Path="nt/nt.vcxproj">
-    <Deploy />
-  </Project>
 </Solution>
