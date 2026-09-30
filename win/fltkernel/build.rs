@@ -66,6 +66,7 @@ fn main() {
         .layout_tests(false)
         .use_core()
         .wrap_unsafe_ops(true)
+        .derive_default(true)
         // Finish the builder and generate the bindings.
         .generate()
         // Unwrap the Result and panic on failure.
