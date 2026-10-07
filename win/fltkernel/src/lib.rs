@@ -23,7 +23,7 @@ macro_rules! kd_print
         unsafe {
             DbgPrint($fmt $(, $arg)*);
         }
-    };
+    }
 }
 
 #[macro_export]
