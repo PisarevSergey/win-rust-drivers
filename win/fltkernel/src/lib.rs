@@ -5,6 +5,8 @@
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+use core::ops::Deref;
+
 #[macro_export]
 macro_rules! c_str {
     ($s:literal) => {
@@ -29,5 +31,42 @@ macro_rules! kd_print
 #[macro_export]
 #[cfg(not(debug_assertions))]
 macro_rules! kd_print {
-    ($($tokens:tt)*) => {}
+    ($($tokens:tt)*) => {};
+}
+
+pub struct FltFileNameInformation {
+    name: PFLT_FILE_NAME_INFORMATION,
+}
+
+impl Drop for FltFileNameInformation {
+    fn drop(&mut self) {
+        unsafe { FltReleaseFileNameInformation(self.name) };
+    }
+}
+
+impl Deref for FltFileNameInformation {
+    type Target = FLT_FILE_NAME_INFORMATION;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.name }
+    }
+}
+
+pub fn query_file_name_information(
+    cbd: &mut FLT_CALLBACK_DATA,
+    file_name_options: FLT_FILE_NAME_OPTIONS,
+) -> core::result::Result<FltFileNameInformation, NTSTATUS> {
+    let mut fni: PFLT_FILE_NAME_INFORMATION = core::ptr::null_mut();
+
+    let status =
+        unsafe { FltGetFileNameInformation(&raw mut *cbd, file_name_options, &raw mut fni) };
+    if status != 0 {
+        kd_print!(
+            c_str!("FltGetFileNameInformation failed with status 0x%x\n"),
+            status
+        );
+        return Err(status);
+    }
+
+    Ok(FltFileNameInformation { name: fni })
 }
