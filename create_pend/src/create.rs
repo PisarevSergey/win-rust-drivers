@@ -41,5 +41,35 @@ pub unsafe extern "C" fn pre_create(
         }
     };
 
+    let iopb = unsafe { &*cbd.Iopb };
+    let params = unsafe { iopb.Parameters.Create };
+
+    let mut ea_buffer = params.EaBuffer;
+    if !ea_buffer.is_null() && params.EaLength != 0 {
+        loop {
+            let ea_info = ea_buffer as fltkernel::PFILE_FULL_EA_INFORMATION;
+            let ea_info = unsafe { &mut *ea_info };
+
+            let ea_name = fltkernel::ANSI_STRING {
+                Length: u16::from(ea_info.EaNameLength),
+                MaximumLength: u16::from(ea_info.EaNameLength),
+                Buffer: ea_info.EaName.as_mut_ptr(),
+            };
+
+            kd_print!(
+                c_str!("EA name: %Z, EA params at: %p, EA length: %d\n"),
+                &raw const ea_name,
+                params.EaBuffer,
+                params.EaLength
+            );
+
+            if ea_info.NextEntryOffset == 0 {
+                break;
+            }
+
+            ea_buffer = ea_buffer.byte_add(ea_info.NextEntryOffset as usize);
+        }
+    }
+
     FLT_PREOP_SUCCESS_NO_CALLBACK
 }
