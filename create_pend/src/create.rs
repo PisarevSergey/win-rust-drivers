@@ -1,6 +1,6 @@
 use fltkernel::{
-    DbgPrint, FLT_FILE_NAME_OPENED, FLT_FILE_NAME_QUERY_DEFAULT, FLT_PREOP_CALLBACK_STATUS,
-    PCFLT_RELATED_OBJECTS, PFLT_CALLBACK_DATA, PVOID, c_str, kd_print,
+    DbgPrint, FLT_CALLBACK_DATA, FLT_FILE_NAME_OPENED, FLT_FILE_NAME_QUERY_DEFAULT,
+    FLT_PREOP_CALLBACK_STATUS, PCFLT_RELATED_OBJECTS, PFLT_CALLBACK_DATA, PVOID, c_str, kd_print,
 };
 
 use fltkernel::_FLT_PREOP_CALLBACK_STATUS_FLT_PREOP_SUCCESS_NO_CALLBACK as FLT_PREOP_SUCCESS_NO_CALLBACK;
@@ -10,7 +10,20 @@ pub unsafe extern "C" fn pre_create(
     _flt_objects: PCFLT_RELATED_OBJECTS,
     _completion_context: *mut PVOID,
 ) -> FLT_PREOP_CALLBACK_STATUS {
-    let cbd = unsafe { &*data };
+    let cbd = unsafe { &mut *data };
+
+    report_cbd(cbd);
+
+    FLT_PREOP_SUCCESS_NO_CALLBACK
+}
+
+fn report_cbd(cbd: &mut FLT_CALLBACK_DATA) {
+    report_requestor_mode(cbd);
+    report_file_path(cbd);
+    report_extended_attributes(cbd);
+}
+
+fn report_requestor_mode(cbd: &FLT_CALLBACK_DATA) {
     match fltkernel::MODE::from(cbd.RequestorMode) {
         fltkernel::_MODE_KernelMode => {
             kd_print!(c_str!("create from kernel mode\n"))
@@ -22,9 +35,11 @@ pub unsafe extern "C" fn pre_create(
             kd_print!(c_str!("unexpected requestor mode %d\n"), mode)
         }
     }
+}
 
+fn report_file_path(cbd: &mut FLT_CALLBACK_DATA) {
     match fltkernel::query_file_name_information(
-        unsafe { &mut *data },
+        cbd,
         FLT_FILE_NAME_QUERY_DEFAULT | FLT_FILE_NAME_OPENED,
     ) {
         Ok(fni) => {
@@ -40,7 +55,9 @@ pub unsafe extern "C" fn pre_create(
             )
         }
     };
+}
 
+fn report_extended_attributes(cbd: &FLT_CALLBACK_DATA) {
     let iopb = unsafe { &*cbd.Iopb };
     let params = unsafe { iopb.Parameters.Create };
 
@@ -67,9 +84,7 @@ pub unsafe extern "C" fn pre_create(
                 break;
             }
 
-            ea_buffer = ea_buffer.byte_add(ea_info.NextEntryOffset as usize);
+            ea_buffer = unsafe { ea_buffer.byte_add(ea_info.NextEntryOffset as usize) };
         }
     }
-
-    FLT_PREOP_SUCCESS_NO_CALLBACK
 }
