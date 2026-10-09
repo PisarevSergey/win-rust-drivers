@@ -44,13 +44,13 @@ fn report_file_path(cbd: &mut FLT_CALLBACK_DATA) {
     ) {
         Ok(fni) => {
             kd_print!(
-                c_str!("[create_pend]: create file: %wZ\n"),
+                c_str!("create file: %wZ\n"),
                 &raw const fni.Name
             )
         }
         Err(status) => {
             kd_print!(
-                c_str!("[create_pend]: query name failed with status 0x%x\n"),
+                c_str!("query name failed with status 0x%x\n"),
                 status
             )
         }
