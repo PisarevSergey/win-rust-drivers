@@ -70,3 +70,32 @@ pub fn query_file_name_information(
 
     Ok(FltFileNameInformation { name: fni })
 }
+
+pub struct ExtraCreateParameters<'a> {
+    ecp_list: &'a mut ECP_LIST,
+}
+
+fn FltGetExtraCreateParameters<'a>(
+    filter: &'a mut _FLT_FILTER,
+    cbd: &'a mut FLT_CALLBACK_DATA,
+) -> core::result::Result<ExtraCreateParameters<'a>, NTSTATUS> {
+    let mut ecp_list: PECP_LIST = core::ptr::null_mut();
+    let status = unsafe {
+        FltGetEcpListFromCallbackData(&raw mut *filter, &raw mut *cbd, &raw mut ecp_list)
+    };
+    if status != 0 {
+        kd_print!(
+            c_str!("FltGetEcpListFromCallbackData failed with status 0x%x\n"),
+            status
+        );
+        return Err(status);
+    }
+
+    if ecp_list.is_null() {
+        return Err(0);
+    }
+
+    Ok(ExtraCreateParameters {
+        ecp_list: unsafe { &mut *ecp_list },
+    })
+}
