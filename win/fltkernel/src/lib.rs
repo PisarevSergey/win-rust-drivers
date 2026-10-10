@@ -73,13 +73,15 @@ pub fn query_file_name_information(
 
 pub struct ExtraCreateParameters<'a> {
     ecp_list: &'a mut ECP_LIST,
+    filter: &'a mut _FLT_FILTER,
     current_ecp_context: PVOID,
 }
 
 impl<'a> ExtraCreateParameters<'a> {
-    unsafe fn new(list: PECP_LIST) -> Self {
+    fn new(filter: &'a mut _FLT_FILTER, list: &'a mut ECP_LIST) -> Self {
         Self {
-            ecp_list: unsafe { &mut *list },
+            ecp_list: list,
+            filter: filter,
             current_ecp_context: core::ptr::null_mut(),
         }
     }
@@ -89,6 +91,15 @@ impl<'a> Iterator for ExtraCreateParameters<'a> {
     type Item = GUID;
 
     fn next(&mut self) -> Option<Self::Item> {
+        //     let status = FltGetNextExtraCreateParameter(
+        //     Filter: PFLT_FILTER,
+        //     EcpList: PECP_LIST,
+        //     CurrentEcpContext: PVOID,
+        //     NextEcpType: LPGUID,
+        //     NextEcpContext: *mut PVOID,
+        //     NextEcpContextSize: *mut ULONG,
+        // ) -> NTSTATUS;
+
         None
     }
 }
@@ -113,5 +124,7 @@ pub fn get_extra_create_parameters<'a>(
         return Err(0);
     }
 
-    Ok(unsafe { ExtraCreateParameters::new(&mut *ecp_list) })
+    Ok(ExtraCreateParameters::new(filter, unsafe {
+        &mut *ecp_list
+    }))
 }
