@@ -5,6 +5,8 @@
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+const STATUS_NOT_FOUND: NTSTATUS = 0xc000_0225_u32.cast_signed();
+
 use core::ops::Deref;
 
 #[macro_export]
@@ -91,14 +93,29 @@ impl<'a> Iterator for ExtraCreateParameters<'a> {
     type Item = GUID;
 
     fn next(&mut self) -> Option<Self::Item> {
-        //     let status = FltGetNextExtraCreateParameter(
-        //     Filter: PFLT_FILTER,
-        //     EcpList: PECP_LIST,
-        //     CurrentEcpContext: PVOID,
-        //     NextEcpType: LPGUID,
-        //     NextEcpContext: *mut PVOID,
-        //     NextEcpContextSize: *mut ULONG,
-        // ) -> NTSTATUS;
+        let mut next_ecp_type = GUID::default();
+        let mut next_ecp_ctx_size = ULONG::default();
+
+        let status = unsafe {
+            FltGetNextExtraCreateParameter(
+                &raw mut *self.filter,
+                &raw mut *self.ecp_list,
+                self.current_ecp_context,
+                &raw mut next_ecp_type,
+                &raw mut self.current_ecp_context,
+                &raw mut next_ecp_ctx_size,
+            )
+        };
+        if status == 0 {
+            return Some(next_ecp_type);
+        } else if status == STATUS_NOT_FOUND {
+            // empty ECP list or last ECP
+        } else {
+            kd_print!(
+                c_str!("FltGetNextExtraCreateParameter failed with status 0x%x\n"),
+                status
+            );
+        }
 
         None
     }
