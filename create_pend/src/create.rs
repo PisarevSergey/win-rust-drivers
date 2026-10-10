@@ -89,4 +89,8 @@ fn report_ecp_list(filter: &mut FLT_FILTER, cbd: &mut FLT_CALLBACK_DATA) {
     let Ok(ecp_list) = fltkernel::get_extra_create_parameters(filter, cbd) else {
         return;
     };
+
+    for ecp in ecp_list {
+        
+    }
 }
