@@ -75,7 +75,7 @@ pub struct ExtraCreateParameters<'a> {
     ecp_list: &'a mut ECP_LIST,
 }
 
-fn FltGetExtraCreateParameters<'a>(
+pub fn get_extra_create_parameters<'a>(
     filter: &'a mut _FLT_FILTER,
     cbd: &'a mut FLT_CALLBACK_DATA,
 ) -> core::result::Result<ExtraCreateParameters<'a>, NTSTATUS> {
