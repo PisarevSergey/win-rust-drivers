@@ -69,7 +69,7 @@ fn try_create<T: Default>(size: Option<usize>) -> Option<Box<T>> {
     let Ok(la) = Layout::from_size_align(size, alignment) else {
         kd_print!(
             c_str!(
-                "[create_pend]: failed to create memory layout for size %llx and alignment %llx\n"
+                "failed to create memory layout for size %llx and alignment %llx\n"
             ),
             size,
             alignment
@@ -94,7 +94,7 @@ fn try_create<T: Default>(size: Option<usize>) -> Option<Box<T>> {
 #[unsafe(no_mangle)]
 extern "system" fn DriverEntry(driver: PDRIVER_OBJECT, reg_path: PUNICODE_STRING) -> NTSTATUS {
     kd_print!(
-        c_str!("[create_pend]: enter DriverEntry; driver object %p; reg path %wZ\n"),
+        c_str!("enter DriverEntry; driver object %p; reg path %wZ\n"),
         driver,
         reg_path
     );
@@ -121,18 +121,18 @@ extern "system" fn DriverEntry(driver: PDRIVER_OBJECT, reg_path: PUNICODE_STRING
     let status = unsafe { FltRegisterFilter(driver, &raw const flt_reg, &raw mut FILTER) };
     if status != 0 {
         kd_print!(
-            c_str!("[create_pend]: FltRegisterFilter failed with status: 0x%x\n"),
+            c_str!("FltRegisterFilter failed with status: 0x%x\n"),
             status
         );
 
         return status;
     }
-    kd_print!(c_str!("[create_pend]: FltRegisterFilter success\n"));
+    kd_print!(c_str!("FltRegisterFilter success\n"));
 
     let status = unsafe { FltStartFiltering(FILTER) };
     if status != 0 {
         kd_print!(
-            c_str!("[create_pend]: FltStartFiltering failed with status 0x%x\n"),
+            c_str!("FltStartFiltering failed with status 0x%x\n"),
             status
         );
 
@@ -141,18 +141,18 @@ extern "system" fn DriverEntry(driver: PDRIVER_OBJECT, reg_path: PUNICODE_STRING
         return status;
     }
 
-    kd_print!(c_str!("[create_pend]: filter start success\n"));
+    kd_print!(c_str!("filter start success\n"));
     STATUS_SUCCESS
 }
 
 extern "C" fn unload(_flags: FLT_FILTER_UNLOAD_FLAGS) -> NTSTATUS {
-    kd_print!(c_str!("[create_pend]: start unloading\n"));
+    kd_print!(c_str!("start unloading\n"));
 
     unsafe {
         FltUnregisterFilter(FILTER);
     }
 
-    kd_print!(c_str!("[create_pend]: unloading complete\n"));
+    kd_print!(c_str!("unloading complete\n"));
 
     STATUS_SUCCESS
 }
@@ -166,18 +166,18 @@ unsafe extern "C" fn attach(
     unsafe { report_volume((&*flt_objects).Volume) };
 
     if volume_device_type != FILE_DEVICE_DISK_FILE_SYSTEM {
-        kd_print!(c_str!("[create_pend]: not a local disk, do not attach\n"));
+        kd_print!(c_str!("not a local disk, do not attach\n"));
         return STATUS_FLT_DO_NOT_ATTACH;
     }
 
-    kd_print!(c_str!("[create_pend]: attaching to volume\n"));
+    kd_print!(c_str!("attaching to volume\n"));
     STATUS_SUCCESS
 }
 
 unsafe fn report_volume(volume: PFLT_VOLUME) {
     let Ok(volume_info_buffer_size) = usize::try_from(PAGE_SIZE) else {
         kd_print!(
-            c_str!("[create_pend]: failed to convert {} to usize\n"),
+            c_str!("failed to convert {} to usize\n"),
             PAGE_SIZE
         );
         return;
@@ -186,7 +186,7 @@ unsafe fn report_volume(volume: PFLT_VOLUME) {
     let Some(mut vol_prop) = try_create::<_FLT_VOLUME_PROPERTIES>(Some(volume_info_buffer_size))
     else {
         kd_print!(c_str!(
-            "[create_pend]: failed to allocate _FLT_VOLUME_PROPERTIES buffer\n"
+            "failed to allocate _FLT_VOLUME_PROPERTIES buffer\n"
         ));
         return;
     };
@@ -203,7 +203,7 @@ unsafe fn report_volume(volume: PFLT_VOLUME) {
     if status != STATUS_SUCCESS {
         kd_print!(
             c_str!(
-                "[create_pend]: FltGetVolumeProperties failed with status 0x%x; length returned %d\n"
+                "FltGetVolumeProperties failed with status 0x%x; length returned %d\n"
             ),
             status,
             length_ret
@@ -214,7 +214,7 @@ unsafe fn report_volume(volume: PFLT_VOLUME) {
 
     kd_print!(
         c_str!(
-            "[create_pend]: attach for volume FileSystemDriverName: %wZ; FileSystemDeviceName: %wZ; RealDeviceName: %wZ;\n"
+            "attach for volume FileSystemDriverName: %wZ; FileSystemDeviceName: %wZ; RealDeviceName: %wZ;\n"
         ),
         &raw const vol_prop.FileSystemDriverName,
         &raw const vol_prop.FileSystemDeviceName,

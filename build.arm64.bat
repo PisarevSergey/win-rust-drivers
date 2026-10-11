@@ -1,0 +1,1 @@
+msbuild %1 /p:configuration=debug /p:platform=arm64
