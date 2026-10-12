@@ -1,5 +1,5 @@
 use fltkernel::{
-    _FLT_FILTER as FLT_FILTER,
+    _FLT_FILTER as FLT_FILTER, _FLT_PREOP_CALLBACK_STATUS_FLT_PREOP_PENDING as FLT_PREOP_PENDING,
     _FLT_PREOP_CALLBACK_STATUS_FLT_PREOP_SUCCESS_NO_CALLBACK as FLT_PREOP_SUCCESS_NO_CALLBACK,
     DbgPrint, FLT_CALLBACK_DATA, FLT_FILE_NAME_OPENED, FLT_FILE_NAME_QUERY_DEFAULT,
     FLT_PREOP_CALLBACK_STATUS, PCFLT_RELATED_OBJECTS, PFLT_CALLBACK_DATA, PVOID, c_str, kd_print,
@@ -14,7 +14,15 @@ pub unsafe extern "C" fn pre_create(
 
     report_cbd(unsafe { &mut (*(*flt_objects).Filter) }, cbd);
 
-    FLT_PREOP_SUCCESS_NO_CALLBACK
+    unsafe {
+        fltkernel::FltCompletePendedPreOperation(
+            data,
+            FLT_PREOP_SUCCESS_NO_CALLBACK,
+            core::ptr::null_mut(),
+        )
+    };
+
+    FLT_PREOP_PENDING
 }
 
 fn report_cbd(filter: &mut FLT_FILTER, cbd: &mut FLT_CALLBACK_DATA) {
