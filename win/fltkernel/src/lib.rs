@@ -147,13 +147,13 @@ pub fn get_extra_create_parameters<'a>(
     }))
 }
 
-pub struct FltContext<'a, T> {
-    ctx: &'a mut T,
+pub struct FltContext<T> {
+    ctx: *mut T,
 }
 
-impl<T> Drop for FltContext<'_, T> {
+impl<T> Drop for FltContext<T> {
     fn drop(&mut self) {
-        unsafe { FltReleaseContext(&raw mut *self.ctx as PFLT_CONTEXT) };
+        unsafe { FltReleaseContext(self.ctx as PFLT_CONTEXT) };
     }
 }
 
@@ -161,7 +161,7 @@ pub fn try_create_context<T: Default>(
     filter: &mut _FLT_FILTER,
     ctx_type: FLT_CONTEXT_TYPE,
     context_size: core::option::Option<SIZE_T>,
-) -> core::result::Result<FltContext<'_, T>, NTSTATUS> {
+) -> core::result::Result<FltContext<T>, NTSTATUS> {
     let mut ctx_raw_mem = core::ptr::null_mut::<T>();
     let alloc_size = context_size.unwrap_or(core::mem::size_of::<T>() as SIZE_T);
     let status = unsafe {
@@ -179,6 +179,6 @@ pub fn try_create_context<T: Default>(
 
     unsafe { core::ptr::write(ctx_raw_mem as *mut T, T::default()) };
     Ok(FltContext {
-        ctx: unsafe { &mut *ctx_raw_mem },
+        ctx: ctx_raw_mem,
     })
 }
