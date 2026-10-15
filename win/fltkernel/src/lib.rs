@@ -178,7 +178,5 @@ pub fn try_create_context<T: Default>(
     }
 
     unsafe { core::ptr::write(ctx_raw_mem as *mut T, T::default()) };
-    Ok(FltContext {
-        ctx: ctx_raw_mem,
-    })
+    Ok(FltContext { ctx: ctx_raw_mem })
 }
