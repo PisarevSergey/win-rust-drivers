@@ -5,6 +5,8 @@
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+mod callback_data_queue;
+
 const STATUS_NOT_FOUND: NTSTATUS = 0xc000_0225_u32.cast_signed();
 
 use _POOL_TYPE_NonPagedPoolNx as NonPagedPoolNx;
