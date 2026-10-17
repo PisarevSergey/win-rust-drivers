@@ -187,7 +187,7 @@ unsafe extern "C" fn attach(
 
 unsafe fn report_volume(volume: PFLT_VOLUME) {
     let Ok(volume_info_buffer_size) = usize::try_from(PAGE_SIZE) else {
-        kd_print!(c_str!("failed to convert {} to usize\n"), PAGE_SIZE);
+        kd_print!(c_str!("failed to convert 0x%x to usize\n"), PAGE_SIZE);
         return;
     };
 
