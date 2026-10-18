@@ -10,6 +10,8 @@ mod callback_data_queue;
 const STATUS_NOT_FOUND: NTSTATUS = 0xc000_0225_u32.cast_signed();
 
 use _POOL_TYPE_NonPagedPoolNx as NonPagedPoolNx;
+use _FLT_SET_CONTEXT_OPERATION_FLT_SET_CONTEXT_KEEP_IF_EXISTS as FLT_SET_CONTEXT_KEEP_IF_EXISTS;
+
 use core::ops::Deref;
 
 #[macro_export]
@@ -181,4 +183,28 @@ pub fn try_create_context<T: Default>(
 
     unsafe { core::ptr::write(ctx_raw_mem as *mut T, T::default()) };
     Ok(FltContext { ctx: ctx_raw_mem })
+}
+
+pub fn set_instance_context_if_none<T>(
+    instance: &mut _FLT_INSTANCE,
+    context: &FltContext<T>,
+) -> core::result::Result<NTSTATUS, NTSTATUS> {
+    let status = unsafe {
+        FltSetInstanceContext(
+            &raw mut *instance,
+            FLT_SET_CONTEXT_KEEP_IF_EXISTS,
+            context.ctx as PFLT_CONTEXT,
+            core::ptr::null_mut(),
+        )
+    };
+
+    if status != 0 {
+        kd_print!(
+            c_str!("FltSetInstanceContext failed with status 0x%x\n"),
+            status
+        );
+        return Err(status);
+    }
+
+    Ok(status)
 }
