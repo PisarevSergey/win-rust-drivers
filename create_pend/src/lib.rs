@@ -178,8 +178,21 @@ unsafe extern "C" fn attach(
         None,
     ) {
         Ok(ic) => ic,
-        Err(status) => return status,
+        Err(status) => {
+            kd_print!(
+                c_str!("failed to create instance context with status 0x%x\n"),
+                status
+            );
+            return status;
+        }
     };
+
+    if let Err(status) =
+        fltkernel::set_instance_context_if_none(&mut *flt_objects.Instance, &instance_ctx)
+    {
+        kd_print!(c_str!("failed to set instance context with status 0x%x\n"), status);
+        return STATUS_FLT_DO_NOT_ATTACH;
+    }
 
     kd_print!(c_str!("attaching to volume\n"));
     STATUS_SUCCESS
