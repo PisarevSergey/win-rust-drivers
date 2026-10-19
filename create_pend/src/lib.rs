@@ -11,12 +11,12 @@ use core::{
 };
 
 use fltkernel::{
-    _FLT_VOLUME_PROPERTIES, DbgPrint, FILE_DEVICE_DISK_FILE_SYSTEM, FLT_FILESYSTEM_TYPE,
-    FLT_FILTER_UNLOAD_FLAGS, FLT_INSTANCE_CONTEXT, FLT_INSTANCE_SETUP_FLAGS,
-    FLT_OPERATION_REGISTRATION, FLT_REGISTRATION, FLT_REGISTRATION_VERSION, FltGetVolumeProperties,
-    FltRegisterFilter, FltStartFiltering, FltUnregisterFilter, IRP_MJ_CREATE, KeBugCheck, NTSTATUS,
-    PAGE_SIZE, PCFLT_RELATED_OBJECTS, PDRIVER_OBJECT, PFLT_FILTER, PFLT_VOLUME, PUNICODE_STRING,
-    UCHAR, ULONG, c_str, kd_print,
+    _FLT_VOLUME_PROPERTIES, DbgPrint, FILE_DEVICE_DISK_FILE_SYSTEM, FLT_CONTEXT_END,
+    FLT_CONTEXT_REGISTRATION, FLT_FILESYSTEM_TYPE, FLT_FILTER_UNLOAD_FLAGS, FLT_INSTANCE_CONTEXT,
+    FLT_INSTANCE_SETUP_FLAGS, FLT_OPERATION_REGISTRATION, FLT_REGISTRATION,
+    FLT_REGISTRATION_VERSION, FltGetVolumeProperties, FltRegisterFilter, FltStartFiltering,
+    FltUnregisterFilter, IRP_MJ_CREATE, KeBugCheck, NTSTATUS, PAGE_SIZE, PCFLT_RELATED_OBJECTS,
+    PDRIVER_OBJECT, PFLT_FILTER, PFLT_VOLUME, PUNICODE_STRING, UCHAR, ULONG, c_str, kd_print,
 };
 
 mod create;
@@ -27,6 +27,7 @@ const STATUS_FLT_DO_NOT_ATTACH: NTSTATUS = 0xC0_1C_00_0F_u32.cast_signed();
 const POOL_FLAG_NON_PAGED: u64 = 0x00000000_00000040_u64;
 const POOL_FLAG_UNINITIALIZED: u64 = 0x00000000_00000002_u64;
 const IRP_MJ_OPERATION_END: UCHAR = 0x80_u8;
+const INSTANCE_CONTEXT_POOL_TAG: u32 = u32::from_be_bytes(*b"Cpic");
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -110,12 +111,27 @@ extern "system" fn DriverEntry(driver: PDRIVER_OBJECT, reg_path: PUNICODE_STRING
         },
     ];
 
+    let ctx_reg = [
+        FLT_CONTEXT_REGISTRATION {
+            ContextType: FLT_INSTANCE_CONTEXT as u16,
+            ContextCleanupCallback: Some(instance_context::instance_context_cleanup),
+            Size: core::mem::size_of::<instance_context::InstanceContext>() as u64,
+            PoolTag: INSTANCE_CONTEXT_POOL_TAG,
+            ..FLT_CONTEXT_REGISTRATION::default()
+        },
+        FLT_CONTEXT_REGISTRATION {
+            ContextType: FLT_CONTEXT_END as u16,
+            ..FLT_CONTEXT_REGISTRATION::default()
+        },
+    ];
+
     let mut flt_reg = FLT_REGISTRATION::default();
     flt_reg.Size = core::mem::size_of_val(&flt_reg) as u16;
     flt_reg.Version = FLT_REGISTRATION_VERSION as u16;
     flt_reg.FilterUnloadCallback = Some(unload);
     flt_reg.InstanceSetupCallback = Some(attach);
     flt_reg.OperationRegistration = operations.as_ptr();
+    flt_reg.ContextRegistration = ctx_reg.as_ptr();
 
     let status = unsafe { FltRegisterFilter(driver, &raw const flt_reg, &raw mut FILTER) };
     if status != 0 {
@@ -187,10 +203,14 @@ unsafe extern "C" fn attach(
         }
     };
 
-    if let Err(status) =
-        fltkernel::set_instance_context_if_none(&mut *flt_objects.Instance, &instance_ctx)
-    {
-        kd_print!(c_str!("failed to set instance context with status 0x%x\n"), status);
+    if let Err(status) = fltkernel::set_instance_context_if_none(
+        unsafe { &mut *flt_objects.Instance },
+        &instance_ctx,
+    ) {
+        kd_print!(
+            c_str!("failed to set instance context with status 0x%x\n"),
+            status
+        );
         return STATUS_FLT_DO_NOT_ATTACH;
     }
 
