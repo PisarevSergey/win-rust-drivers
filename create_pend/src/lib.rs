@@ -11,21 +11,23 @@ use core::{
 };
 
 use fltkernel::{
-    _FLT_VOLUME_PROPERTIES, DbgPrint, FILE_DEVICE_DISK_FILE_SYSTEM, FLT_FILESYSTEM_TYPE,
-    FLT_FILTER_UNLOAD_FLAGS, FLT_INSTANCE_SETUP_FLAGS, FLT_OPERATION_REGISTRATION,
-    FLT_REGISTRATION, FLT_REGISTRATION_VERSION, FltGetVolumeProperties, FltRegisterFilter,
-    FltStartFiltering, FltUnregisterFilter, IRP_MJ_CREATE, KeBugCheck, NTSTATUS, PAGE_SIZE,
-    PCFLT_RELATED_OBJECTS, PDRIVER_OBJECT, PFLT_FILTER, PFLT_VOLUME, PUNICODE_STRING, UCHAR, ULONG,
-    c_str, kd_print,
+    _FLT_VOLUME_PROPERTIES, DbgPrint, FILE_DEVICE_DISK_FILE_SYSTEM, FLT_CONTEXT_END,
+    FLT_CONTEXT_REGISTRATION, FLT_FILESYSTEM_TYPE, FLT_FILTER_UNLOAD_FLAGS, FLT_INSTANCE_CONTEXT,
+    FLT_INSTANCE_SETUP_FLAGS, FLT_OPERATION_REGISTRATION, FLT_REGISTRATION,
+    FLT_REGISTRATION_VERSION, FltGetVolumeProperties, FltRegisterFilter, FltStartFiltering,
+    FltUnregisterFilter, IRP_MJ_CREATE, KeBugCheck, NTSTATUS, PAGE_SIZE, PCFLT_RELATED_OBJECTS,
+    PDRIVER_OBJECT, PFLT_FILTER, PFLT_VOLUME, PUNICODE_STRING, UCHAR, ULONG, c_str, kd_print,
 };
 
 mod create;
+mod instance_context;
 
 const STATUS_SUCCESS: NTSTATUS = 0;
 const STATUS_FLT_DO_NOT_ATTACH: NTSTATUS = 0xC0_1C_00_0F_u32.cast_signed();
 const POOL_FLAG_NON_PAGED: u64 = 0x00000000_00000040_u64;
 const POOL_FLAG_UNINITIALIZED: u64 = 0x00000000_00000002_u64;
 const IRP_MJ_OPERATION_END: UCHAR = 0x80_u8;
+const INSTANCE_CONTEXT_POOL_TAG: u32 = u32::from_be_bytes(*b"Cpic");
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -68,9 +70,7 @@ fn try_create<T: Default>(size: Option<usize>) -> Option<Box<T>> {
     let size = size.unwrap_or(size_of::<T>());
     let Ok(la) = Layout::from_size_align(size, alignment) else {
         kd_print!(
-            c_str!(
-                "failed to create memory layout for size %llx and alignment %llx\n"
-            ),
+            c_str!("failed to create memory layout for size %llx and alignment %llx\n"),
             size,
             alignment
         );
@@ -111,12 +111,27 @@ extern "system" fn DriverEntry(driver: PDRIVER_OBJECT, reg_path: PUNICODE_STRING
         },
     ];
 
+    let ctx_reg = [
+        FLT_CONTEXT_REGISTRATION {
+            ContextType: FLT_INSTANCE_CONTEXT as u16,
+            ContextCleanupCallback: Some(instance_context::instance_context_cleanup),
+            Size: core::mem::size_of::<instance_context::InstanceContext>() as u64,
+            PoolTag: INSTANCE_CONTEXT_POOL_TAG,
+            ..FLT_CONTEXT_REGISTRATION::default()
+        },
+        FLT_CONTEXT_REGISTRATION {
+            ContextType: FLT_CONTEXT_END as u16,
+            ..FLT_CONTEXT_REGISTRATION::default()
+        },
+    ];
+
     let mut flt_reg = FLT_REGISTRATION::default();
     flt_reg.Size = core::mem::size_of_val(&flt_reg) as u16;
     flt_reg.Version = FLT_REGISTRATION_VERSION as u16;
     flt_reg.FilterUnloadCallback = Some(unload);
     flt_reg.InstanceSetupCallback = Some(attach);
     flt_reg.OperationRegistration = operations.as_ptr();
+    flt_reg.ContextRegistration = ctx_reg.as_ptr();
 
     let status = unsafe { FltRegisterFilter(driver, &raw const flt_reg, &raw mut FILTER) };
     if status != 0 {
@@ -163,10 +178,39 @@ unsafe extern "C" fn attach(
     volume_device_type: ULONG,
     _volume_filesystem_type: FLT_FILESYSTEM_TYPE,
 ) -> NTSTATUS {
-    unsafe { report_volume((&*flt_objects).Volume) };
+    let flt_objects = unsafe { &*flt_objects };
+
+    unsafe { report_volume(flt_objects.Volume) };
 
     if volume_device_type != FILE_DEVICE_DISK_FILE_SYSTEM {
         kd_print!(c_str!("not a local disk, do not attach\n"));
+        return STATUS_FLT_DO_NOT_ATTACH;
+    }
+
+    let filter = unsafe { &mut (*(flt_objects.Filter)) };
+    let instance_ctx = match fltkernel::try_create_context::<instance_context::InstanceContext>(
+        filter,
+        FLT_INSTANCE_CONTEXT as u16,
+        None,
+    ) {
+        Ok(ic) => ic,
+        Err(status) => {
+            kd_print!(
+                c_str!("failed to create instance context with status 0x%x\n"),
+                status
+            );
+            return status;
+        }
+    };
+
+    if let Err(status) = fltkernel::set_instance_context_if_none(
+        unsafe { &mut *flt_objects.Instance },
+        &instance_ctx,
+    ) {
+        kd_print!(
+            c_str!("failed to set instance context with status 0x%x\n"),
+            status
+        );
         return STATUS_FLT_DO_NOT_ATTACH;
     }
 
@@ -176,18 +220,13 @@ unsafe extern "C" fn attach(
 
 unsafe fn report_volume(volume: PFLT_VOLUME) {
     let Ok(volume_info_buffer_size) = usize::try_from(PAGE_SIZE) else {
-        kd_print!(
-            c_str!("failed to convert {} to usize\n"),
-            PAGE_SIZE
-        );
+        kd_print!(c_str!("failed to convert 0x%x to usize\n"), PAGE_SIZE);
         return;
     };
 
     let Some(mut vol_prop) = try_create::<_FLT_VOLUME_PROPERTIES>(Some(volume_info_buffer_size))
     else {
-        kd_print!(c_str!(
-            "failed to allocate _FLT_VOLUME_PROPERTIES buffer\n"
-        ));
+        kd_print!(c_str!("failed to allocate _FLT_VOLUME_PROPERTIES buffer\n"));
         return;
     };
 
@@ -202,9 +241,7 @@ unsafe fn report_volume(volume: PFLT_VOLUME) {
     };
     if status != STATUS_SUCCESS {
         kd_print!(
-            c_str!(
-                "FltGetVolumeProperties failed with status 0x%x; length returned %d\n"
-            ),
+            c_str!("FltGetVolumeProperties failed with status 0x%x; length returned %d\n"),
             status,
             length_ret
         );

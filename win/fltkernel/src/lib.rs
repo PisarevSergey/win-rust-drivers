@@ -5,7 +5,12 @@
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+mod callback_data_queue;
+
 const STATUS_NOT_FOUND: NTSTATUS = 0xc000_0225_u32.cast_signed();
+
+use _POOL_TYPE_NonPagedPoolNx as NonPagedPoolNx;
+use _FLT_SET_CONTEXT_OPERATION_FLT_SET_CONTEXT_KEEP_IF_EXISTS as FLT_SET_CONTEXT_KEEP_IF_EXISTS;
 
 use core::ops::Deref;
 
@@ -144,4 +149,62 @@ pub fn get_extra_create_parameters<'a>(
     Ok(ExtraCreateParameters::new(filter, unsafe {
         &mut *ecp_list
     }))
+}
+
+pub struct FltContext<T> {
+    ctx: *mut T,
+}
+
+impl<T> Drop for FltContext<T> {
+    fn drop(&mut self) {
+        unsafe { FltReleaseContext(self.ctx as PFLT_CONTEXT) };
+    }
+}
+
+pub fn try_create_context<T: Default>(
+    filter: &mut _FLT_FILTER,
+    ctx_type: FLT_CONTEXT_TYPE,
+    context_size: core::option::Option<SIZE_T>,
+) -> core::result::Result<FltContext<T>, NTSTATUS> {
+    let mut ctx_raw_mem = core::ptr::null_mut::<T>();
+    let alloc_size = context_size.unwrap_or(core::mem::size_of::<T>() as SIZE_T);
+    let status = unsafe {
+        FltAllocateContext(
+            &raw mut *filter,
+            ctx_type,
+            alloc_size,
+            NonPagedPoolNx,
+            &raw mut ctx_raw_mem as *mut PFLT_CONTEXT,
+        )
+    };
+    if status != 0 {
+        return Err(status);
+    }
+
+    unsafe { core::ptr::write(ctx_raw_mem as *mut T, T::default()) };
+    Ok(FltContext { ctx: ctx_raw_mem })
+}
+
+pub fn set_instance_context_if_none<T>(
+    instance: &mut _FLT_INSTANCE,
+    context: &FltContext<T>,
+) -> core::result::Result<NTSTATUS, NTSTATUS> {
+    let status = unsafe {
+        FltSetInstanceContext(
+            &raw mut *instance,
+            FLT_SET_CONTEXT_KEEP_IF_EXISTS,
+            context.ctx as PFLT_CONTEXT,
+            core::ptr::null_mut(),
+        )
+    };
+
+    if status != 0 {
+        kd_print!(
+            c_str!("FltSetInstanceContext failed with status 0x%x\n"),
+            status
+        );
+        return Err(status);
+    }
+
+    Ok(status)
 }
