@@ -24,7 +24,7 @@ pub unsafe extern "C" fn instance_context_cleanup(
 
 fn create_list_head() -> LIST_ENTRY {
     LIST_ENTRY {
-        Flink: core::ptr::null_mut::<LIST_ENTRY>(),
-        Blink: core::ptr::null_mut::<LIST_ENTRY>(),
+        Flink: core::ptr::null_mut(),
+        Blink: core::ptr::null_mut(),
     }
 }
