@@ -31,7 +31,7 @@ impl InstanceContext {
         acquire: PFLT_CALLBACK_DATA_QUEUE_ACQUIRE,
         release: PFLT_CALLBACK_DATA_QUEUE_RELEASE,
         complete_canceled_io: PFLT_CALLBACK_DATA_QUEUE_COMPLETE_CANCELED_IO,
-    ) -> NTSTATUS {
+    ) -> Result<NTSTATUS, NTSTATUS> {
         let cbdq = match fltkernel::try_create_cbd_queue(
             instance,
             insert_io,
@@ -47,12 +47,12 @@ impl InstanceContext {
                     c_str!("try_create_cbd_queue failed with status 0x%x\n"),
                     status
                 );
-                return status;
+                return Err(status);
             }
         };
         self.cbdq = cbdq;
 
-        0
+        Ok(0)
     }
 }
 

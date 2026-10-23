@@ -19,9 +19,9 @@ use fltkernel::{
     PDRIVER_OBJECT, PFLT_FILTER, PFLT_VOLUME, PUNICODE_STRING, UCHAR, ULONG, c_str, kd_print,
 };
 
+mod cbd_queue;
 mod create;
 mod instance_context;
-mod cbd_queue;
 
 const STATUS_SUCCESS: NTSTATUS = 0;
 const STATUS_FLT_DO_NOT_ATTACH: NTSTATUS = 0xC0_1C_00_0F_u32.cast_signed();
@@ -189,7 +189,7 @@ unsafe extern "C" fn attach(
     }
 
     let filter = unsafe { &mut (*(flt_objects.Filter)) };
-    let instance_ctx = match fltkernel::try_create_context::<instance_context::InstanceContext>(
+    let mut instance_ctx = match fltkernel::try_create_context::<instance_context::InstanceContext>(
         filter,
         FLT_INSTANCE_CONTEXT as u16,
         None,
@@ -203,6 +203,22 @@ unsafe extern "C" fn attach(
             return status;
         }
     };
+
+    if let Err(status) = instance_ctx.init(
+        unsafe { &mut *flt_objects.Instance },
+        Some(cbd_queue::insert_io),
+        Some(cbd_queue::remove_io),
+        Some(cbd_queue::peeknext_io),
+        Some(cbd_queue::acquire),
+        Some(cbd_queue::release),
+        Some(cbd_queue::complete_canceled_io),
+    ) {
+        kd_print!(
+            c_str!("instance context init failed with status 0x%x\n"),
+            status
+        );
+        return STATUS_FLT_DO_NOT_ATTACH;
+    }
 
     if let Err(status) = fltkernel::set_instance_context_if_none(
         unsafe { &mut *flt_objects.Instance },
