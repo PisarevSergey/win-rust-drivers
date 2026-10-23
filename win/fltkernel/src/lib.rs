@@ -228,3 +228,5 @@ pub fn create_list_head() -> LIST_ENTRY {
         Blink: core::ptr::null_mut(),
     }
 }
+
+pub use crate::callback_data_queue::try_create_cbd_queue;
