@@ -9,8 +9,8 @@ mod callback_data_queue;
 
 const STATUS_NOT_FOUND: NTSTATUS = 0xc000_0225_u32.cast_signed();
 
-use _POOL_TYPE_NonPagedPoolNx as NonPagedPoolNx;
 use _FLT_SET_CONTEXT_OPERATION_FLT_SET_CONTEXT_KEEP_IF_EXISTS as FLT_SET_CONTEXT_KEEP_IF_EXISTS;
+use _POOL_TYPE_NonPagedPoolNx as NonPagedPoolNx;
 
 use core::ops::Deref;
 
@@ -207,4 +207,11 @@ pub fn set_instance_context_if_none<T>(
     }
 
     Ok(status)
+}
+
+pub fn create_list_head() -> LIST_ENTRY {
+    LIST_ENTRY {
+        Flink: core::ptr::null_mut(),
+        Blink: core::ptr::null_mut(),
+    }
 }

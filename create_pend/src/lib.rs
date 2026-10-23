@@ -21,6 +21,7 @@ use fltkernel::{
 
 mod create;
 mod instance_context;
+mod cbd_queue;
 
 const STATUS_SUCCESS: NTSTATUS = 0;
 const STATUS_FLT_DO_NOT_ATTACH: NTSTATUS = 0xC0_1C_00_0F_u32.cast_signed();

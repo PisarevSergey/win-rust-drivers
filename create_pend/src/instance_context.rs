@@ -1,4 +1,6 @@
-use fltkernel::{FLT_CALLBACK_DATA_QUEUE, FLT_CONTEXT_TYPE, LIST_ENTRY, PFLT_CONTEXT};
+use fltkernel::{
+    FLT_CALLBACK_DATA_QUEUE, FLT_CONTEXT_TYPE, LIST_ENTRY, PFLT_CONTEXT, create_list_head,
+};
 
 #[repr(C)]
 pub struct InstanceContext {
@@ -20,11 +22,4 @@ pub unsafe extern "C" fn instance_context_cleanup(
     _context_type: FLT_CONTEXT_TYPE,
 ) {
     unsafe { core::ptr::drop_in_place(context as *mut InstanceContext) };
-}
-
-fn create_list_head() -> LIST_ENTRY {
-    LIST_ENTRY {
-        Flink: core::ptr::null_mut(),
-        Blink: core::ptr::null_mut(),
-    }
 }
