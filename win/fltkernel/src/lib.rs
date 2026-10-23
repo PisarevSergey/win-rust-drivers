@@ -12,7 +12,7 @@ const STATUS_NOT_FOUND: NTSTATUS = 0xc000_0225_u32.cast_signed();
 use _FLT_SET_CONTEXT_OPERATION_FLT_SET_CONTEXT_KEEP_IF_EXISTS as FLT_SET_CONTEXT_KEEP_IF_EXISTS;
 use _POOL_TYPE_NonPagedPoolNx as NonPagedPoolNx;
 
-use core::ops::Deref;
+use core::ops::{Deref, DerefMut};
 
 #[macro_export]
 macro_rules! c_str {
@@ -158,6 +158,19 @@ pub struct FltContext<T> {
 impl<T> Drop for FltContext<T> {
     fn drop(&mut self) {
         unsafe { FltReleaseContext(self.ctx as PFLT_CONTEXT) };
+    }
+}
+
+impl<T> Deref for FltContext<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.ctx }
+    }
+}
+
+impl<T> DerefMut for FltContext<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *self.ctx }
     }
 }
 
