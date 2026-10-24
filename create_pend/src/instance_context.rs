@@ -4,7 +4,9 @@ use fltkernel::{
     c_str, initialize_list_head, kd_print,
 };
 
-use crate::{STATUS_SUCCESS, cbd_queue};
+use crate::{STATUS_SUCCESS};
+
+mod cbd_queue;
 
 #[repr(C)]
 #[derive(Default)]

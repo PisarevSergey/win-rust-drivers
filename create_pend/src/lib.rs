@@ -19,7 +19,6 @@ use fltkernel::{
     PDRIVER_OBJECT, PFLT_FILTER, PFLT_VOLUME, PUNICODE_STRING, UCHAR, ULONG, c_str, kd_print,
 };
 
-mod cbd_queue;
 mod create;
 mod instance_context;
 
