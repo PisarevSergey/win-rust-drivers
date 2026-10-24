@@ -1,9 +1,10 @@
 use fltkernel::{
     _FLT_INSTANCE, DbgPrint, FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE, FLT_CONTEXT_TYPE,
-    FltCbdqInsertIo, LIST_ENTRY, NTSTATUS, PFLT_CALLBACK_DATA, PFLT_CALLBACK_DATA_QUEUE_ACQUIRE,
-    PFLT_CALLBACK_DATA_QUEUE_COMPLETE_CANCELED_IO, PFLT_CALLBACK_DATA_QUEUE_INSERT_IO,
-    PFLT_CALLBACK_DATA_QUEUE_PEEK_NEXT_IO, PFLT_CALLBACK_DATA_QUEUE_RELEASE,
-    PFLT_CALLBACK_DATA_QUEUE_REMOVE_IO, PFLT_CONTEXT, c_str, create_list_head, kd_print,
+    FltCbdqInsertIo, FltCbdqRemoveNextIo, LIST_ENTRY, NTSTATUS, PFLT_CALLBACK_DATA,
+    PFLT_CALLBACK_DATA_QUEUE_ACQUIRE, PFLT_CALLBACK_DATA_QUEUE_COMPLETE_CANCELED_IO,
+    PFLT_CALLBACK_DATA_QUEUE_INSERT_IO, PFLT_CALLBACK_DATA_QUEUE_PEEK_NEXT_IO,
+    PFLT_CALLBACK_DATA_QUEUE_RELEASE, PFLT_CALLBACK_DATA_QUEUE_REMOVE_IO, PFLT_CONTEXT, c_str,
+    create_list_head, kd_print,
 };
 
 use crate::STATUS_SUCCESS;
@@ -82,7 +83,12 @@ impl InstanceContext {
     }
 
     pub fn pop_cbd(&mut self) -> Result<PFLT_CALLBACK_DATA, PFLT_CALLBACK_DATA> {
-        Err(core::ptr::null_mut::<FLT_CALLBACK_DATA>())
+        let cbd = unsafe { FltCbdqRemoveNextIo(&mut self.cbdq, core::ptr::null_mut()) };
+        if cbd.is_null() {
+            return Err(core::ptr::null_mut::<FLT_CALLBACK_DATA>());
+        }
+
+        Ok(cbd)
     }
 }
 
