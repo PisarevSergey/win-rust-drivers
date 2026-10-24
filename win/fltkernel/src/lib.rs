@@ -222,11 +222,9 @@ pub fn set_instance_context_if_none<T>(
     Ok(status)
 }
 
-pub fn create_list_head() -> LIST_ENTRY {
-    LIST_ENTRY {
-        Flink: core::ptr::null_mut(),
-        Blink: core::ptr::null_mut(),
-    }
+pub fn initialize_list_head(head: &mut LIST_ENTRY) {
+    head.Flink = core::ptr::from_mut(head);
+    head.Blink = core::ptr::from_mut(head);
 }
 
 pub use crate::callback_data_queue::try_create_cbd_queue;

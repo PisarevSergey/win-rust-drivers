@@ -10,7 +10,7 @@ unsafe extern "C" fn insert_io(
     cbd: PFLT_CALLBACK_DATA,
     insert_context: PVOID,
 ) -> NTSTATUS {
-    let ic = cbdq as *mut instance_context::InstanceContext;
+    let ic = unsafe{&mut *(cbdq as *mut instance_context::InstanceContext)};
     unimplemented!("to do");
     0
 }

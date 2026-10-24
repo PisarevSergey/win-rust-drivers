@@ -1,24 +1,16 @@
 use fltkernel::{
     _FLT_INSTANCE, DbgPrint, FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE, FLT_CONTEXT_TYPE,
     FltCbdqInsertIo, FltCbdqRemoveNextIo, LIST_ENTRY, NTSTATUS, PFLT_CALLBACK_DATA, PFLT_CONTEXT,
-    c_str, create_list_head, kd_print,
+    c_str, initialize_list_head, kd_print,
 };
 
 use crate::{STATUS_SUCCESS, cbd_queue};
 
 #[repr(C)]
+#[derive(Default)]
 pub struct InstanceContext {
     cbdq: FLT_CALLBACK_DATA_QUEUE,
     pended_cbds: LIST_ENTRY,
-}
-
-impl Default for InstanceContext {
-    fn default() -> Self {
-        Self {
-            cbdq: FLT_CALLBACK_DATA_QUEUE::default(),
-            pended_cbds: create_list_head(),
-        }
-    }
 }
 
 impl InstanceContext {
@@ -34,6 +26,7 @@ impl InstanceContext {
             }
         };
         self.cbdq = cbdq;
+        initialize_list_head(&mut self.pended_cbds);
 
         Ok(0)
     }
