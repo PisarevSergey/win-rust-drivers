@@ -1,10 +1,12 @@
 use fltkernel::{
-    _FLT_INSTANCE, DbgPrint, FLT_CALLBACK_DATA_QUEUE, FLT_CONTEXT_TYPE, LIST_ENTRY, NTSTATUS,
-    PFLT_CALLBACK_DATA_QUEUE_ACQUIRE, PFLT_CALLBACK_DATA_QUEUE_COMPLETE_CANCELED_IO,
-    PFLT_CALLBACK_DATA_QUEUE_INSERT_IO, PFLT_CALLBACK_DATA_QUEUE_PEEK_NEXT_IO,
-    PFLT_CALLBACK_DATA_QUEUE_RELEASE, PFLT_CALLBACK_DATA_QUEUE_REMOVE_IO, PFLT_CONTEXT, c_str,
-    create_list_head, kd_print,
+    _FLT_INSTANCE, DbgPrint, FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE, FLT_CONTEXT_TYPE,
+    FltCbdqInsertIo, LIST_ENTRY, NTSTATUS, PFLT_CALLBACK_DATA, PFLT_CALLBACK_DATA_QUEUE_ACQUIRE,
+    PFLT_CALLBACK_DATA_QUEUE_COMPLETE_CANCELED_IO, PFLT_CALLBACK_DATA_QUEUE_INSERT_IO,
+    PFLT_CALLBACK_DATA_QUEUE_PEEK_NEXT_IO, PFLT_CALLBACK_DATA_QUEUE_RELEASE,
+    PFLT_CALLBACK_DATA_QUEUE_REMOVE_IO, PFLT_CONTEXT, c_str, create_list_head, kd_print,
 };
+
+use crate::STATUS_SUCCESS;
 
 #[repr(C)]
 pub struct InstanceContext {
@@ -53,6 +55,34 @@ impl InstanceContext {
         self.cbdq = cbdq;
 
         Ok(0)
+    }
+
+    pub fn push_cbd(&mut self, cbd: PFLT_CALLBACK_DATA) -> Result<NTSTATUS, NTSTATUS> {
+        let status = unsafe {
+            FltCbdqInsertIo(
+                &raw mut self.cbdq,
+                cbd,
+                core::ptr::null_mut(),
+                core::ptr::null_mut(),
+            )
+        };
+        match status {
+            STATUS_SUCCESS => {
+                return Ok(STATUS_SUCCESS);
+            }
+            _ => {
+                kd_print!(
+                    c_str!("FltCbdqInsertIo failed for CBD 0x%p with status 0x%x\n"),
+                    cbd,
+                    status
+                );
+                return Err(status);
+            }
+        }
+    }
+
+    pub fn pop_cbd(&mut self) -> Result<PFLT_CALLBACK_DATA, PFLT_CALLBACK_DATA> {
+        Err(core::ptr::null_mut::<FLT_CALLBACK_DATA>())
     }
 }
 
