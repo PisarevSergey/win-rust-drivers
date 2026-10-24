@@ -33,7 +33,7 @@ impl InstanceContext {
         Ok(0)
     }
 
-    pub fn push_cbd(&mut self, cbd: PFLT_CALLBACK_DATA) -> Result<NTSTATUS, NTSTATUS> {
+    pub fn pend_cbd(&mut self, cbd: PFLT_CALLBACK_DATA) -> Result<NTSTATUS, NTSTATUS> {
         let status = unsafe {
             FltCbdqInsertIo(
                 &raw mut self.cbdq,
@@ -57,7 +57,7 @@ impl InstanceContext {
         }
     }
 
-    pub fn pop_cbd(&mut self) -> Result<PFLT_CALLBACK_DATA, PFLT_CALLBACK_DATA> {
+    pub fn extract_pended_cbd(&mut self) -> Result<PFLT_CALLBACK_DATA, PFLT_CALLBACK_DATA> {
         let cbd = unsafe { FltCbdqRemoveNextIo(&mut self.cbdq, core::ptr::null_mut()) };
         if cbd.is_null() {
             return Err(core::ptr::null_mut::<FLT_CALLBACK_DATA>());
