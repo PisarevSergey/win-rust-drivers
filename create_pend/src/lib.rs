@@ -205,14 +205,7 @@ unsafe extern "C" fn attach(
     };
 
     if let Err(status) = instance_ctx.init(
-        unsafe { &mut *flt_objects.Instance },
-        Some(cbd_queue::insert_io),
-        Some(cbd_queue::remove_io),
-        Some(cbd_queue::peeknext_io),
-        Some(cbd_queue::acquire),
-        Some(cbd_queue::release),
-        Some(cbd_queue::complete_canceled_io),
-    ) {
+        unsafe { &mut *flt_objects.Instance }) {
         kd_print!(
             c_str!("instance context init failed with status 0x%x\n"),
             status

@@ -5,7 +5,7 @@ use fltkernel::{
 
 use crate::instance_context;
 
-pub unsafe extern "C" fn insert_io(
+unsafe extern "C" fn insert_io(
     cbdq: PFLT_CALLBACK_DATA_QUEUE,
     cbd: PFLT_CALLBACK_DATA,
     insert_context: PVOID,
@@ -15,11 +15,11 @@ pub unsafe extern "C" fn insert_io(
     0
 }
 
-pub unsafe extern "C" fn remove_io(cbdq: PFLT_CALLBACK_DATA_QUEUE, cbd: PFLT_CALLBACK_DATA) {
+unsafe extern "C" fn remove_io(cbdq: PFLT_CALLBACK_DATA_QUEUE, cbd: PFLT_CALLBACK_DATA) {
     unimplemented!("to do");
 }
 
-pub unsafe extern "C" fn peeknext_io(
+unsafe extern "C" fn peeknext_io(
     cbdq: PFLT_CALLBACK_DATA_QUEUE,
     cbd: PFLT_CALLBACK_DATA,
     peek_context: PVOID,
@@ -28,15 +28,15 @@ pub unsafe extern "C" fn peeknext_io(
     core::ptr::null_mut()
 }
 
-pub unsafe extern "C" fn acquire(cbdq: PFLT_CALLBACK_DATA_QUEUE, irql: PKIRQL) {
+unsafe extern "C" fn acquire(cbdq: PFLT_CALLBACK_DATA_QUEUE, irql: PKIRQL) {
     unimplemented!("to do");
 }
 
-pub unsafe extern "C" fn release(cbdq: PFLT_CALLBACK_DATA_QUEUE, irql: KIRQL) {
+unsafe extern "C" fn release(cbdq: PFLT_CALLBACK_DATA_QUEUE, irql: KIRQL) {
     unimplemented!("to do");
 }
 
-pub unsafe extern "C" fn complete_canceled_io(
+unsafe extern "C" fn complete_canceled_io(
     cbdq: PFLT_CALLBACK_DATA_QUEUE,
     cbd: PFLT_CALLBACK_DATA,
 ) {

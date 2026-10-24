@@ -1,13 +1,10 @@
 use fltkernel::{
     _FLT_INSTANCE, DbgPrint, FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE, FLT_CONTEXT_TYPE,
-    FltCbdqInsertIo, FltCbdqRemoveNextIo, LIST_ENTRY, NTSTATUS, PFLT_CALLBACK_DATA,
-    PFLT_CALLBACK_DATA_QUEUE_ACQUIRE, PFLT_CALLBACK_DATA_QUEUE_COMPLETE_CANCELED_IO,
-    PFLT_CALLBACK_DATA_QUEUE_INSERT_IO, PFLT_CALLBACK_DATA_QUEUE_PEEK_NEXT_IO,
-    PFLT_CALLBACK_DATA_QUEUE_RELEASE, PFLT_CALLBACK_DATA_QUEUE_REMOVE_IO, PFLT_CONTEXT, c_str,
-    create_list_head, kd_print,
+    FltCbdqInsertIo, FltCbdqRemoveNextIo, LIST_ENTRY, NTSTATUS, PFLT_CALLBACK_DATA, PFLT_CONTEXT,
+    c_str, create_list_head, kd_print,
 };
 
-use crate::STATUS_SUCCESS;
+use crate::{STATUS_SUCCESS, cbd_queue};
 
 #[repr(C)]
 pub struct InstanceContext {
@@ -25,25 +22,8 @@ impl Default for InstanceContext {
 }
 
 impl InstanceContext {
-    pub fn init(
-        &mut self,
-        instance: &mut _FLT_INSTANCE,
-        insert_io: PFLT_CALLBACK_DATA_QUEUE_INSERT_IO,
-        remove_io: PFLT_CALLBACK_DATA_QUEUE_REMOVE_IO,
-        peeknext_io: PFLT_CALLBACK_DATA_QUEUE_PEEK_NEXT_IO,
-        acquire: PFLT_CALLBACK_DATA_QUEUE_ACQUIRE,
-        release: PFLT_CALLBACK_DATA_QUEUE_RELEASE,
-        complete_canceled_io: PFLT_CALLBACK_DATA_QUEUE_COMPLETE_CANCELED_IO,
-    ) -> Result<NTSTATUS, NTSTATUS> {
-        let cbdq = match fltkernel::try_create_cbd_queue(
-            instance,
-            insert_io,
-            remove_io,
-            peeknext_io,
-            acquire,
-            release,
-            complete_canceled_io,
-        ) {
+    pub fn init(&mut self, instance: &mut _FLT_INSTANCE) -> Result<NTSTATUS, NTSTATUS> {
+        let cbdq = match cbd_queue::try_create_cbd_queue(instance) {
             Ok(cbdq) => cbdq,
             Err(status) => {
                 kd_print!(
