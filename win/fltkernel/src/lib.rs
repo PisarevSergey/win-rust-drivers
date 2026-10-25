@@ -227,4 +227,16 @@ pub fn initialize_list_head(head: &mut LIST_ENTRY) {
     head.Blink = core::ptr::from_mut(head);
 }
 
+pub fn insert_tail_list(
+    list_head: &mut LIST_ENTRY,
+    insert_entry: PLIST_ENTRY)
+{
+    let blink = list_head.Blink;
+    let entry = unsafe{&mut *insert_entry};
+    entry.Flink = &raw mut *list_head;
+    entry.Blink = blink;
+    unsafe{(*blink).Flink = insert_entry};
+    list_head.Blink = insert_entry;
+}
+
 pub use crate::callback_data_queue::try_create_cbd_queue;

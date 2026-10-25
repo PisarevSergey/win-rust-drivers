@@ -11,6 +11,7 @@ unsafe extern "C" fn insert_io(
     insert_context: PVOID,
 ) -> NTSTATUS {
     let ic = unsafe{&mut *(cbdq as *mut instance_context::InstanceContext)};
+    // ic.pended_cbds
     unimplemented!("to do");
     0
 }
