@@ -1,6 +1,6 @@
 use fltkernel::{
     _FLT_INSTANCE, FLT_CALLBACK_DATA_QUEUE, KIRQL, NTSTATUS, PFLT_CALLBACK_DATA,
-    PFLT_CALLBACK_DATA_QUEUE, PKIRQL, PLIST_ENTRY, PVOID, insert_tail_list,
+    PFLT_CALLBACK_DATA_QUEUE, PKIRQL, PLIST_ENTRY, PVOID, insert_tail_list, remove_entry_list,
 };
 
 use crate::{STATUS_SUCCESS, instance_context};
@@ -16,8 +16,8 @@ unsafe extern "C" fn insert_io(
     STATUS_SUCCESS
 }
 
-unsafe extern "C" fn remove_io(cbdq: PFLT_CALLBACK_DATA_QUEUE, cbd: PFLT_CALLBACK_DATA) {
-    unimplemented!("to do");
+unsafe extern "C" fn remove_io(_cbdq: PFLT_CALLBACK_DATA_QUEUE, cbd: PFLT_CALLBACK_DATA) {
+    remove_entry_list(get_list_entry(cbd));
 }
 
 unsafe extern "C" fn peeknext_io(
