@@ -246,4 +246,9 @@ pub fn remove_entry_list(entry: PLIST_ENTRY) -> bool {
     core::ptr::from_ref(flink) == core::ptr::from_ref(blink)
 }
 
+pub fn is_list_empty(list_head: &LIST_ENTRY) -> bool
+{
+    core::ptr::from_ref(list_head) == list_head.Flink
+}
+
 pub use crate::callback_data_queue::try_create_cbd_queue;
