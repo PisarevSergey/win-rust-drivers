@@ -1,5 +1,5 @@
 use fltkernel::{
-    _FLT_INSTANCE, FLT_CALLBACK_DATA_QUEUE, KIRQL, NTSTATUS, PFLT_CALLBACK_DATA,
+    _FLT_INSTANCE, FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE, KIRQL, NTSTATUS, PFLT_CALLBACK_DATA,
     PFLT_CALLBACK_DATA_QUEUE, PKIRQL, PLIST_ENTRY, PVOID, insert_tail_list, remove_entry_list,
 };
 
@@ -25,8 +25,27 @@ unsafe extern "C" fn peeknext_io(
     cbd: PFLT_CALLBACK_DATA,
     peek_context: PVOID,
 ) -> PFLT_CALLBACK_DATA {
-    unimplemented!("to do");
-    core::ptr::null_mut()
+    let ic = unsafe { &*(cbdq as *const instance_context::InstanceContext) };
+
+    let next_entry;
+    if cbd.is_null() {
+        next_entry = ic.pended_cbds.Flink;
+    } else {
+        next_entry = unsafe { (*get_list_entry(cbd)).Flink };
+    }
+
+    if core::ptr::addr_eq(next_entry, &ic.pended_cbds) {
+        return core::ptr::null_mut();
+    }
+
+    let offset = core::mem::offset_of!(
+        FLT_CALLBACK_DATA,
+        __bindgen_anon_1.__bindgen_anon_1.QueueLinks
+    );
+
+    let next_entry = unsafe { next_entry.byte_sub(offset) };
+
+    next_entry as PFLT_CALLBACK_DATA
 }
 
 unsafe extern "C" fn acquire(cbdq: PFLT_CALLBACK_DATA_QUEUE, irql: PKIRQL) {
