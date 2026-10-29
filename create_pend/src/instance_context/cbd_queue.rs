@@ -1,9 +1,11 @@
 use fltkernel::{
-    _FLT_INSTANCE, FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE, KIRQL, NTSTATUS, PFLT_CALLBACK_DATA,
-    PFLT_CALLBACK_DATA_QUEUE, PKIRQL, PLIST_ENTRY, PVOID, insert_tail_list, remove_entry_list,
+    _FLT_INSTANCE, _FLT_PREOP_CALLBACK_STATUS_FLT_PREOP_COMPLETE as FLT_PREOP_COMPLETE,
+    FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE, FltCompletePendedPreOperation, KIRQL, NTSTATUS,
+    PFLT_CALLBACK_DATA, PFLT_CALLBACK_DATA_QUEUE, PKIRQL, PLIST_ENTRY, PVOID, insert_tail_list,
+    remove_entry_list,
 };
 
-use crate::{STATUS_SUCCESS, instance_context};
+use crate::{STATUS_CANCELLED, STATUS_SUCCESS, instance_context};
 
 unsafe extern "C" fn insert_io(
     cbdq: PFLT_CALLBACK_DATA_QUEUE,
@@ -23,7 +25,7 @@ unsafe extern "C" fn remove_io(_cbdq: PFLT_CALLBACK_DATA_QUEUE, cbd: PFLT_CALLBA
 unsafe extern "C" fn peeknext_io(
     cbdq: PFLT_CALLBACK_DATA_QUEUE,
     cbd: PFLT_CALLBACK_DATA,
-    peek_context: PVOID,
+    _peek_context: PVOID,
 ) -> PFLT_CALLBACK_DATA {
     let ic = unsafe { &*(cbdq as *const instance_context::InstanceContext) };
 
@@ -56,8 +58,16 @@ unsafe extern "C" fn release(cbdq: PFLT_CALLBACK_DATA_QUEUE, irql: KIRQL) {
     unimplemented!("to do");
 }
 
-unsafe extern "C" fn complete_canceled_io(cbdq: PFLT_CALLBACK_DATA_QUEUE, cbd: PFLT_CALLBACK_DATA) {
-    unimplemented!("to do");
+unsafe extern "C" fn complete_canceled_io(
+    _cbdq: PFLT_CALLBACK_DATA_QUEUE,
+    cbd: PFLT_CALLBACK_DATA,
+) {
+    let cbd = unsafe { &mut *cbd };
+
+    cbd.IoStatus.__bindgen_anon_1.Status = STATUS_CANCELLED;
+    cbd.IoStatus.Information = 0;
+
+    unsafe { FltCompletePendedPreOperation(cbd, FLT_PREOP_COMPLETE, core::ptr::null_mut()) };
 }
 
 pub fn try_create_cbd_queue(
