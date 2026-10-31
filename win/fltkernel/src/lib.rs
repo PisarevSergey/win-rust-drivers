@@ -8,11 +8,12 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 mod callback_data_queue;
 
 const STATUS_NOT_FOUND: NTSTATUS = 0xc000_0225_u32.cast_signed();
+const STATUS_SUCCESS: NTSTATUS = 0;
 
-use _POOL_TYPE_NonPagedPoolNx as NonPagedPoolNx;
 use _FLT_SET_CONTEXT_OPERATION_FLT_SET_CONTEXT_KEEP_IF_EXISTS as FLT_SET_CONTEXT_KEEP_IF_EXISTS;
+use _POOL_TYPE_NonPagedPoolNx as NonPagedPoolNx;
 
-use core::ops::Deref;
+use core::ops::{Deref, DerefMut};
 
 #[macro_export]
 macro_rules! c_str {
@@ -161,6 +162,19 @@ impl<T> Drop for FltContext<T> {
     }
 }
 
+impl<T> Deref for FltContext<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.ctx }
+    }
+}
+
+impl<T> DerefMut for FltContext<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *self.ctx }
+    }
+}
+
 pub fn try_create_context<T: Default>(
     filter: &mut _FLT_FILTER,
     ctx_type: FLT_CONTEXT_TYPE,
@@ -207,4 +221,72 @@ pub fn set_instance_context_if_none<T>(
     }
 
     Ok(status)
+}
+
+pub fn get_instance_context<T>(
+    instance: &mut _FLT_INSTANCE,
+) -> core::result::Result<FltContext<T>, NTSTATUS> {
+    let mut ic = core::ptr::null_mut::<T>();
+    let status = unsafe { FltGetInstanceContext(instance, &raw mut ic as *mut PFLT_CONTEXT) };
+    if status != STATUS_SUCCESS {
+        return Err(status);
+    }
+
+    Ok(FltContext { ctx: ic })
+}
+
+pub fn initialize_list_head(head: &mut LIST_ENTRY) {
+    head.Flink = core::ptr::from_mut(head);
+    head.Blink = core::ptr::from_mut(head);
+}
+
+pub fn insert_tail_list(list_head: &mut LIST_ENTRY, insert_entry: PLIST_ENTRY) {
+    let blink = list_head.Blink;
+    let entry = unsafe { &mut *insert_entry };
+    entry.Flink = &raw mut *list_head;
+    entry.Blink = blink;
+    unsafe { (*blink).Flink = insert_entry };
+    list_head.Blink = insert_entry;
+}
+
+pub fn remove_entry_list(entry: PLIST_ENTRY) -> bool {
+    let blink = unsafe { &mut *((*entry).Blink) };
+    let flink = unsafe { &mut *((*entry).Flink) };
+
+    blink.Flink = flink;
+    flink.Blink = blink;
+
+    core::ptr::from_ref(flink) == core::ptr::from_ref(blink)
+}
+
+pub fn is_list_empty(list_head: &LIST_ENTRY) -> bool {
+    core::ptr::from_ref(list_head) == list_head.Flink
+}
+
+pub use crate::callback_data_queue::try_create_cbd_queue;
+
+#[derive(Default)]
+pub struct PushLock {
+    lock: ULONG_PTR,
+}
+
+impl PushLock {
+    pub fn new() -> Self {
+        let mut push_lock = Self { lock: 0 };
+        unsafe { FltInitializePushLock(&raw mut push_lock.lock) };
+
+        push_lock
+    }
+
+    pub fn acquire_exclusive(&mut self) {
+        unsafe { FltAcquirePushLockExclusive(&raw mut self.lock) };
+    }
+
+    pub fn acquire_shared(&mut self) {
+        unsafe { FltAcquirePushLockShared(&raw mut self.lock) };
+    }
+
+    pub fn release(&mut self) {
+        unsafe { FltReleasePushLock(&raw mut self.lock) };
+    }
 }

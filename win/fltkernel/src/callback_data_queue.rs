@@ -5,11 +5,7 @@ use crate::{
     PFLT_CALLBACK_DATA_QUEUE_REMOVE_IO,
 };
 
-struct CbdQueue {
-    cbdq: FLT_CALLBACK_DATA_QUEUE,
-}
-
-fn try_create_cbd_queue(
+pub fn try_create_cbd_queue(
     instance: &mut _FLT_INSTANCE,
     insert_io: PFLT_CALLBACK_DATA_QUEUE_INSERT_IO,
     remove_io: PFLT_CALLBACK_DATA_QUEUE_REMOVE_IO,
@@ -17,7 +13,7 @@ fn try_create_cbd_queue(
     acquire: PFLT_CALLBACK_DATA_QUEUE_ACQUIRE,
     release: PFLT_CALLBACK_DATA_QUEUE_RELEASE,
     complete_canceled_io: PFLT_CALLBACK_DATA_QUEUE_COMPLETE_CANCELED_IO,
-) -> core::result::Result<CbdQueue, NTSTATUS> {
+) -> core::result::Result<FLT_CALLBACK_DATA_QUEUE, NTSTATUS> {
     let mut cbdq = FLT_CALLBACK_DATA_QUEUE::default();
 
     let status = unsafe {
@@ -36,5 +32,5 @@ fn try_create_cbd_queue(
         return Err(status);
     }
 
-    Ok(CbdQueue { cbdq: cbdq, })
+    Ok(cbdq)
 }

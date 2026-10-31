@@ -24,6 +24,7 @@ mod instance_context;
 
 const STATUS_SUCCESS: NTSTATUS = 0;
 const STATUS_FLT_DO_NOT_ATTACH: NTSTATUS = 0xC0_1C_00_0F_u32.cast_signed();
+const STATUS_CANCELLED: NTSTATUS = 0xC0_00_01_20_u32.cast_signed();
 const POOL_FLAG_NON_PAGED: u64 = 0x00000000_00000040_u64;
 const POOL_FLAG_UNINITIALIZED: u64 = 0x00000000_00000002_u64;
 const IRP_MJ_OPERATION_END: UCHAR = 0x80_u8;
@@ -188,7 +189,7 @@ unsafe extern "C" fn attach(
     }
 
     let filter = unsafe { &mut (*(flt_objects.Filter)) };
-    let instance_ctx = match fltkernel::try_create_context::<instance_context::InstanceContext>(
+    let mut instance_ctx = match fltkernel::try_create_context::<instance_context::InstanceContext>(
         filter,
         FLT_INSTANCE_CONTEXT as u16,
         None,
@@ -202,6 +203,14 @@ unsafe extern "C" fn attach(
             return status;
         }
     };
+
+    if let Err(status) = instance_ctx.init(unsafe { &mut *flt_objects.Instance }) {
+        kd_print!(
+            c_str!("instance context init failed with status 0x%x\n"),
+            status
+        );
+        return STATUS_FLT_DO_NOT_ATTACH;
+    }
 
     if let Err(status) = fltkernel::set_instance_context_if_none(
         unsafe { &mut *flt_objects.Instance },
