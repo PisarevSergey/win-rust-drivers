@@ -50,11 +50,13 @@ unsafe extern "C" fn peeknext_io(
 }
 
 unsafe extern "C" fn acquire(cbdq: PFLT_CALLBACK_DATA_QUEUE, _irql: PKIRQL) {
-    unimplemented!("to do");
+    let ic = unsafe { &mut *(cbdq as *mut instance_context::InstanceContext) };
+    ic.cbds_lock.acquire_exclusive();
 }
 
 unsafe extern "C" fn release(cbdq: PFLT_CALLBACK_DATA_QUEUE, _irql: KIRQL) {
-    unimplemented!("to do");
+    let ic = unsafe { &mut *(cbdq as *mut instance_context::InstanceContext) };
+    ic.cbds_lock.release();
 }
 
 unsafe extern "C" fn complete_canceled_io(
