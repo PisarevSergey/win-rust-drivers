@@ -1,7 +1,7 @@
 use fltkernel::{
     _FLT_INSTANCE, DbgPrint, FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE, FLT_CONTEXT_TYPE,
-    FltCbdqInsertIo, FltCbdqRemoveNextIo, LIST_ENTRY, NTSTATUS, PFLT_CALLBACK_DATA, PFLT_CONTEXT,
-    PushLock, c_str, initialize_list_head, kd_print,
+    FltCbdqDisable, FltCbdqInsertIo, FltCbdqRemoveNextIo, LIST_ENTRY, NTSTATUS, PFLT_CALLBACK_DATA,
+    PFLT_CONTEXT, PushLock, c_str, initialize_list_head, kd_print,
 };
 
 use crate::STATUS_SUCCESS;
@@ -66,6 +66,10 @@ impl InstanceContext {
         }
 
         Ok(cbd)
+    }
+
+    pub fn disable_queue(&mut self) {
+        unsafe { FltCbdqDisable(&raw mut self.cbdq) };
     }
 }
 
