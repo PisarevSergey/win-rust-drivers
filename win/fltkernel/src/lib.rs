@@ -252,6 +252,7 @@ pub fn is_list_empty(list_head: &LIST_ENTRY) -> bool {
 
 pub use crate::callback_data_queue::try_create_cbd_queue;
 
+#[derive(Default)]
 pub struct PushLock {
     lock: ULONG_PTR,
 }
