@@ -5,6 +5,8 @@ use fltkernel::{
     FLT_PREOP_CALLBACK_STATUS, PCFLT_RELATED_OBJECTS, PFLT_CALLBACK_DATA, PVOID, c_str, kd_print,
 };
 
+use crate::instance_context::InstanceContext;
+
 pub unsafe extern "C" fn pre_create(
     data: PFLT_CALLBACK_DATA,
     flt_objects: PCFLT_RELATED_OBJECTS,
@@ -14,13 +16,33 @@ pub unsafe extern "C" fn pre_create(
 
     report_cbd(unsafe { &mut (*(*flt_objects).Filter) }, cbd);
 
-    unsafe {
-        fltkernel::FltCompletePendedPreOperation(
-            data,
-            FLT_PREOP_SUCCESS_NO_CALLBACK,
-            core::ptr::null_mut(),
-        )
+    let mut ic = match fltkernel::get_instance_context::<InstanceContext>(unsafe {
+        &mut (*(*flt_objects).Instance)
+    }) {
+        Ok(ic) => ic,
+        Err(status) => {
+            kd_print!(
+                c_str!("get_instance_context failed with status 0x%x\n"),
+                status
+            );
+            return FLT_PREOP_SUCCESS_NO_CALLBACK;
+        }
     };
+
+    if let Err(status) = ic.pend_cbd(data) {
+        kd_print!(c_str!("pend_cbd failed with status x%x\n"), status);
+        return FLT_PREOP_SUCCESS_NO_CALLBACK;
+    };
+
+    while let Ok(cbd) = ic.extract_pended_cbd() {
+        unsafe {
+            fltkernel::FltCompletePendedPreOperation(
+                cbd,
+                FLT_PREOP_SUCCESS_NO_CALLBACK,
+                core::ptr::null_mut(),
+            )
+        };
+    }
 
     FLT_PREOP_PENDING
 }
