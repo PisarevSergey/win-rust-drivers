@@ -49,11 +49,11 @@ unsafe extern "C" fn peeknext_io(
     next_entry as PFLT_CALLBACK_DATA
 }
 
-unsafe extern "C" fn acquire(cbdq: PFLT_CALLBACK_DATA_QUEUE, irql: PKIRQL) {
+unsafe extern "C" fn acquire(cbdq: PFLT_CALLBACK_DATA_QUEUE, _irql: PKIRQL) {
     unimplemented!("to do");
 }
 
-unsafe extern "C" fn release(cbdq: PFLT_CALLBACK_DATA_QUEUE, irql: KIRQL) {
+unsafe extern "C" fn release(cbdq: PFLT_CALLBACK_DATA_QUEUE, _irql: KIRQL) {
     unimplemented!("to do");
 }
 
