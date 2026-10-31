@@ -246,9 +246,33 @@ pub fn remove_entry_list(entry: PLIST_ENTRY) -> bool {
     core::ptr::from_ref(flink) == core::ptr::from_ref(blink)
 }
 
-pub fn is_list_empty(list_head: &LIST_ENTRY) -> bool
-{
+pub fn is_list_empty(list_head: &LIST_ENTRY) -> bool {
     core::ptr::from_ref(list_head) == list_head.Flink
 }
 
 pub use crate::callback_data_queue::try_create_cbd_queue;
+
+pub struct PushLock {
+    lock: ULONG_PTR,
+}
+
+impl PushLock {
+    pub fn new() -> Self {
+        let mut push_lock = Self { lock: 0 };
+        unsafe { FltInitializePushLock(&raw mut push_lock.lock) };
+
+        push_lock
+    }
+
+    pub fn acquire_exclusive(&mut self) {
+        unsafe { FltAcquirePushLockExclusive(&raw mut self.lock) };
+    }
+
+    pub fn acquire_shared(&mut self) {
+        unsafe { FltAcquirePushLockShared(&raw mut self.lock) };
+    }
+
+    pub fn release(&mut self) {
+        unsafe { FltReleasePushLock(&raw mut self.lock) };
+    }
+}
