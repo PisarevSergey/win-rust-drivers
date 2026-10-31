@@ -29,12 +29,11 @@ unsafe extern "C" fn peeknext_io(
 ) -> PFLT_CALLBACK_DATA {
     let ic = unsafe { &*(cbdq as *const instance_context::InstanceContext) };
 
-    let next_entry;
-    if cbd.is_null() {
-        next_entry = ic.pended_cbds.Flink;
+    let next_entry = if cbd.is_null() {
+        ic.pended_cbds.Flink
     } else {
-        next_entry = unsafe { (*get_list_entry(cbd)).Flink };
-    }
+        unsafe { (*get_list_entry(cbd)).Flink }
+    };
 
     if core::ptr::addr_eq(next_entry, &ic.pended_cbds) {
         return core::ptr::null_mut();
