@@ -8,6 +8,7 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 mod callback_data_queue;
 
 const STATUS_NOT_FOUND: NTSTATUS = 0xc000_0225_u32.cast_signed();
+const STATUS_SUCCESS: NTSTATUS = 0;
 
 use _FLT_SET_CONTEXT_OPERATION_FLT_SET_CONTEXT_KEEP_IF_EXISTS as FLT_SET_CONTEXT_KEEP_IF_EXISTS;
 use _POOL_TYPE_NonPagedPoolNx as NonPagedPoolNx;
@@ -220,6 +221,18 @@ pub fn set_instance_context_if_none<T>(
     }
 
     Ok(status)
+}
+
+pub fn get_instance_context<T>(
+    instance: &mut _FLT_INSTANCE,
+) -> core::result::Result<FltContext<T>, NTSTATUS> {
+    let mut ic = core::ptr::null_mut::<T>();
+    let status = unsafe { FltGetInstanceContext(instance, &raw mut ic as *mut PFLT_CONTEXT) };
+    if status != STATUS_SUCCESS {
+        return Err(status);
+    }
+
+    Ok(FltContext { ctx: ic })
 }
 
 pub fn initialize_list_head(head: &mut LIST_ENTRY) {
