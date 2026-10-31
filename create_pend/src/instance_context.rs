@@ -1,10 +1,10 @@
 use fltkernel::{
     _FLT_INSTANCE, DbgPrint, FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE, FLT_CONTEXT_TYPE,
     FltCbdqInsertIo, FltCbdqRemoveNextIo, LIST_ENTRY, NTSTATUS, PFLT_CALLBACK_DATA, PFLT_CONTEXT,
-    c_str, initialize_list_head, kd_print,
+    PushLock, c_str, initialize_list_head, kd_print,
 };
 
-use crate::{STATUS_SUCCESS};
+use crate::STATUS_SUCCESS;
 
 mod cbd_queue;
 
@@ -12,6 +12,7 @@ mod cbd_queue;
 #[derive(Default)]
 pub struct InstanceContext {
     cbdq: FLT_CALLBACK_DATA_QUEUE,
+    cbds_lock: PushLock,
     pended_cbds: LIST_ENTRY,
 }
 
@@ -28,6 +29,7 @@ impl InstanceContext {
             }
         };
         self.cbdq = cbdq;
+        self.cbds_lock = PushLock::new();
         initialize_list_head(&mut self.pended_cbds);
 
         Ok(0)
