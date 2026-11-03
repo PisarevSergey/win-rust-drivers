@@ -1,7 +1,8 @@
 use fltkernel::{
-    _FLT_INSTANCE, DbgPrint, FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE, FLT_CONTEXT_TYPE,
+    _FLT_INSTANCE, DbgPrint, FALSE, FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE, FLT_CONTEXT_TYPE,
     FltCbdqDisable, FltCbdqInsertIo, FltCbdqRemoveNextIo, LIST_ENTRY, NTSTATUS, PFLT_CALLBACK_DATA,
-    PFLT_CONTEXT, PushLock, c_str, initialize_list_head, kd_print,
+    PFLT_CONTEXT, PLARGE_INTEGER, PVOID, PsTerminateSystemThread, PushLock, ZwWaitForSingleObject,
+    c_str, create_thread, initialize_list_head, kd_print,
 };
 
 use crate::STATUS_SUCCESS;
@@ -31,6 +32,13 @@ impl InstanceContext {
         self.cbdq = cbdq;
         self.cbds_lock = PushLock::new();
         initialize_list_head(&mut self.pended_cbds);
+
+        let thread = match create_thread(Some(cbd_completer_worker), PVOID::default()) {
+            Ok(thread) => thread,
+            Err(status) => return Err(status),
+        };
+
+        unsafe { ZwWaitForSingleObject(thread, FALSE as u8, PLARGE_INTEGER::default()) };
 
         Ok(0)
     }
@@ -78,4 +86,8 @@ pub unsafe extern "C" fn instance_context_cleanup(
     _context_type: FLT_CONTEXT_TYPE,
 ) {
     unsafe { core::ptr::drop_in_place(context as *mut InstanceContext) };
+}
+
+unsafe extern "C" fn cbd_completer_worker(start_context: PVOID) {
+    unsafe { PsTerminateSystemThread(STATUS_SUCCESS) };
 }
