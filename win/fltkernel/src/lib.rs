@@ -290,3 +290,31 @@ impl PushLock {
         unsafe { FltReleasePushLock(&raw mut self.lock) };
     }
 }
+
+pub fn create_thread(thread: PKSTART_ROUTINE, thread_context: PVOID) -> Result<HANDLE, NTSTATUS> {
+    let mut object_attributes = OBJECT_ATTRIBUTES::default();
+    object_attributes.Length = core::mem::size_of_val(&object_attributes) as u32;
+    object_attributes.Attributes = OBJ_KERNEL_HANDLE;
+
+    let mut thread_handle = HANDLE::default();
+    let status = unsafe {
+        PsCreateSystemThread(
+            &raw mut thread_handle,
+            SYNCHRONIZE,
+            &raw mut object_attributes,
+            HANDLE::default(),
+            PCLIENT_ID::default(),
+            thread,
+            thread_context,
+        )
+    };
+    if status != STATUS_SUCCESS {
+        kd_print!(
+            c_str!("PsCreateSystemThread failed with status 0x%x\n"),
+            status
+        );
+        return Err(status);
+    }
+
+    Ok(thread_handle)
+}
