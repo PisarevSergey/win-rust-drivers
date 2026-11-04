@@ -320,7 +320,7 @@ pub fn create_thread(thread: PKSTART_ROUTINE, thread_context: PVOID) -> Result<H
 }
 
 #[derive(Default)]
-struct Semaphore {
+pub struct Semaphore {
     semaphore: KSEMAPHORE,
 }
 
