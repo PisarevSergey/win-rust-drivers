@@ -330,4 +330,20 @@ impl Semaphore {
             KeInitializeSemaphore(&raw mut self.semaphore, count, limit);
         };
     }
+
+    pub fn release(
+        &mut self,
+        priority_increment: KPRIORITY,
+        adjustment: LONG,
+        wait: BOOLEAN,
+    ) -> LONG {
+        unsafe {
+            KeReleaseSemaphore(
+                &raw mut self.semaphore,
+                priority_increment,
+                adjustment,
+                wait,
+            )
+        }
+    }
 }
