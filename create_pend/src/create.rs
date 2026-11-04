@@ -2,10 +2,11 @@ use fltkernel::{
     _FLT_FILTER as FLT_FILTER, _FLT_PREOP_CALLBACK_STATUS_FLT_PREOP_PENDING as FLT_PREOP_PENDING,
     _FLT_PREOP_CALLBACK_STATUS_FLT_PREOP_SUCCESS_NO_CALLBACK as FLT_PREOP_SUCCESS_NO_CALLBACK,
     DbgPrint, FLT_CALLBACK_DATA, FLT_FILE_NAME_OPENED, FLT_FILE_NAME_QUERY_DEFAULT,
-    FLT_PREOP_CALLBACK_STATUS, PCFLT_RELATED_OBJECTS, PFLT_CALLBACK_DATA, PVOID, c_str, kd_print,
+    FLT_PREOP_CALLBACK_STATUS, NTSTATUS, PCFLT_RELATED_OBJECTS, PFLT_CALLBACK_DATA, PVOID,
+    UNICODE_STRING, c_str, kd_print,
 };
 
-use crate::instance_context::InstanceContext;
+use crate::{STATUS_SUCCESS, instance_context::InstanceContext};
 
 pub unsafe extern "C" fn pre_create(
     data: PFLT_CALLBACK_DATA,
@@ -121,5 +122,31 @@ fn report_ecp_list(filter: &mut FLT_FILTER, cbd: &mut FLT_CALLBACK_DATA) {
 
     for ecp in ecp_list {
         // kd_print!(c_str!("ECP: %!guid!\n"), &raw const ecp);
+    }
+}
+
+fn guid_to_string(guid: &fltkernel::GUID) -> Result<GuidString, NTSTATUS> {
+    let mut string = UNICODE_STRING::default();
+    let status = unsafe { fltkernel::RtlStringFromGUID(&raw const *guid, &raw mut string) };
+    if status != STATUS_SUCCESS {
+        return Err(status);
+    }
+
+    Ok(GuidString { string: string })
+}
+
+struct GuidString {
+    string: UNICODE_STRING,
+}
+
+impl GuidString {
+    fn get_string(&self) -> &UNICODE_STRING {
+        &self.string
+    }
+}
+
+impl Drop for GuidString {
+    fn drop(&mut self) {
+        unsafe { fltkernel::RtlFreeUnicodeString(&raw mut self.string) };
     }
 }
