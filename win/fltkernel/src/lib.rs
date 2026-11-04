@@ -318,3 +318,16 @@ pub fn create_thread(thread: PKSTART_ROUTINE, thread_context: PVOID) -> Result<H
 
     Ok(thread_handle)
 }
+
+#[derive(Default)]
+struct Semaphore {
+    semaphore: KSEMAPHORE,
+}
+
+impl Semaphore {
+    pub fn init(&mut self, count: LONG, limit: LONG) {
+        unsafe {
+            KeInitializeSemaphore(&raw mut self.semaphore, count, limit);
+        };
+    }
+}
