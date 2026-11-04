@@ -121,7 +121,9 @@ fn report_ecp_list(filter: &mut FLT_FILTER, cbd: &mut FLT_CALLBACK_DATA) {
     };
 
     for ecp in ecp_list {
-        // kd_print!(c_str!("ECP: %!guid!\n"), &raw const ecp);
+        if let Ok(ecp_string) = guid_to_string(&ecp) {
+            kd_print!(c_str!("ECP: %wZ\n"), &raw const *ecp_string.get_string());
+        }
     }
 }
 
