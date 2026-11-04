@@ -10,7 +10,10 @@ mod callback_data_queue;
 const STATUS_NOT_FOUND: NTSTATUS = 0xc000_0225_u32.cast_signed();
 const STATUS_SUCCESS: NTSTATUS = 0;
 
+use _EVENT_TYPE_NotificationEvent as NotificationEvent;
 use _FLT_SET_CONTEXT_OPERATION_FLT_SET_CONTEXT_KEEP_IF_EXISTS as FLT_SET_CONTEXT_KEEP_IF_EXISTS;
+use _KWAIT_REASON_Executive as Executive;
+use _MODE_KernelMode as KernelMode;
 use _POOL_TYPE_NonPagedPoolNx as NonPagedPoolNx;
 
 use core::ops::{Deref, DerefMut};
@@ -343,6 +346,34 @@ impl Semaphore {
                 priority_increment,
                 adjustment,
                 wait,
+            )
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct Event {
+    event: KEVENT,
+}
+
+impl Event {
+    pub fn init(&mut self, event_type: EVENT_TYPE, state: bool) {
+        let state = if state { TRUE } else { FALSE } as u8;
+        unsafe { KeInitializeEvent(&raw mut self.event, event_type, state) };
+    }
+
+    pub fn set(&mut self) -> LONG {
+        unsafe { KeSetEvent(&raw mut self.event, IO_NO_INCREMENT as i32, FALSE as u8) }
+    }
+
+    pub fn wait(&mut self) -> NTSTATUS {
+        unsafe {
+            KeWaitForSingleObject(
+                &raw mut self.event as PVOID,
+                Executive,
+                KernelMode as i8,
+                FALSE as u8,
+                core::ptr::null_mut(),
             )
         }
     }
