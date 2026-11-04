@@ -1,8 +1,8 @@
 use fltkernel::{
     _FLT_INSTANCE, DbgPrint, FALSE, FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE, FLT_CONTEXT_TYPE,
     FltCbdqDisable, FltCbdqInsertIo, FltCbdqRemoveNextIo, LIST_ENTRY, NTSTATUS, PFLT_CALLBACK_DATA,
-    PFLT_CONTEXT, PLARGE_INTEGER, PVOID, PsTerminateSystemThread, PushLock, ZwWaitForSingleObject,
-    c_str, create_thread, initialize_list_head, kd_print,
+    PFLT_CONTEXT, PLARGE_INTEGER, PVOID, PsTerminateSystemThread, PushLock, Semaphore,
+    ZwWaitForSingleObject, c_str, create_thread, initialize_list_head, kd_print,
 };
 
 use crate::STATUS_SUCCESS;
@@ -15,6 +15,7 @@ pub struct InstanceContext {
     cbdq: FLT_CALLBACK_DATA_QUEUE,
     cbds_lock: PushLock,
     pended_cbds: LIST_ENTRY,
+    cbd_ready: Semaphore,
 }
 
 impl InstanceContext {
@@ -32,6 +33,7 @@ impl InstanceContext {
         self.cbdq = cbdq;
         self.cbds_lock = PushLock::new();
         initialize_list_head(&mut self.pended_cbds);
+        self.cbd_ready.init(0, i32::MAX);
 
         let thread = match create_thread(Some(cbd_completer_worker), PVOID::default()) {
             Ok(thread) => thread,
