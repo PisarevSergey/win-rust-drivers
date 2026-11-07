@@ -1,8 +1,9 @@
 use fltkernel::{
-    _FLT_INSTANCE, DbgPrint, FALSE, FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE, FLT_CONTEXT_TYPE,
-    FltCbdqDisable, FltCbdqInsertIo, FltCbdqRemoveNextIo, LIST_ENTRY, NTSTATUS, PFLT_CALLBACK_DATA,
-    PFLT_CONTEXT, PLARGE_INTEGER, PVOID, PsTerminateSystemThread, PushLock, Semaphore,
-    ZwWaitForSingleObject, c_str, create_thread, initialize_list_head, kd_print,
+    _FLT_INSTANCE, DbgPrint, Event, FALSE, FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE,
+    FLT_CONTEXT_TYPE, FltCbdqDisable, FltCbdqInsertIo, FltCbdqRemoveNextIo, LIST_ENTRY, NTSTATUS,
+    NotificationEvent, PFLT_CALLBACK_DATA, PFLT_CONTEXT, PLARGE_INTEGER, PVOID,
+    PsTerminateSystemThread, PushLock, Semaphore, ZwClose, ZwWaitForSingleObject, c_str,
+    create_thread, initialize_list_head, kd_print,
 };
 
 use crate::STATUS_SUCCESS;
@@ -16,6 +17,7 @@ pub struct InstanceContext {
     cbds_lock: PushLock,
     pended_cbds: LIST_ENTRY,
     cbd_ready: Semaphore,
+    exit_thread: Event,
 }
 
 impl InstanceContext {
@@ -34,16 +36,27 @@ impl InstanceContext {
         self.cbds_lock = PushLock::new();
         initialize_list_head(&mut self.pended_cbds);
         self.cbd_ready.init(0, i32::MAX);
+        self.exit_thread.init(NotificationEvent, false);
 
-        let thread = match create_thread(Some(cbd_completer_worker), PVOID::default()) {
+        let thread = match create_thread(Some(cbd_completer_worker), &raw mut *self as PVOID) {
             Ok(thread) => thread,
             Err(status) => return Err(status),
         };
 
+        kd_print!(c_str!("thread started\n"));
+        self.exit_thread.set();
+
         unsafe { ZwWaitForSingleObject(thread, FALSE as u8, PLARGE_INTEGER::default()) };
+        unsafe { ZwClose(thread) };
+
+        kd_print!(c_str!("thread closed\n"));
 
         Ok(0)
     }
+
+    // pub fn stop(&mut self){
+
+    // }
 
     pub fn pend_cbd(&mut self, cbd: PFLT_CALLBACK_DATA) -> Result<NTSTATUS, NTSTATUS> {
         let status = unsafe {
@@ -91,5 +104,9 @@ pub unsafe extern "C" fn instance_context_cleanup(
 }
 
 unsafe extern "C" fn cbd_completer_worker(start_context: PVOID) {
+    kd_print!(c_str!("enter thread\n"));
+    let ic = unsafe { &mut *(start_context as *mut InstanceContext) };
+    ic.exit_thread.wait();
+    kd_print!(c_str!("exiting thread\n"));
     unsafe { PsTerminateSystemThread(STATUS_SUCCESS) };
 }
