@@ -403,3 +403,23 @@ impl Drop for AutoHandle {
         unsafe { ZwClose(self.handle) };
     }
 }
+
+pub struct RefObject<T> {
+    object: *mut T,
+}
+
+impl<T> RefObject<T> {
+    pub unsafe fn get_typed_object(&self) -> *mut T {
+        self.object
+    }
+
+    pub unsafe fn get_object(&self) -> PVOID {
+        self.object as PVOID
+    }
+}
+
+impl<T> Drop for RefObject<T> {
+    fn drop(&mut self) {
+        unsafe { ObfDereferenceObject(self.object as PVOID) };
+    }
+}
