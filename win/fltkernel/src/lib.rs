@@ -355,6 +355,10 @@ impl Semaphore {
             )
         }
     }
+
+    pub unsafe fn get_native_semaphore(&mut self) -> PVOID {
+        &raw mut self.semaphore as PVOID
+    }
 }
 
 #[derive(Default)]
