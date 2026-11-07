@@ -42,26 +42,33 @@ impl InstanceContext {
             Ok(thread) => thread,
             Err(status) => return Err(status),
         };
+        kd_print!(c_str!("thread started\n"));
+        self.exit_thread.set(); // TODO: move to drop
 
-        let _thread_object_result = get_object_from_handle(
+        let mut worker_thread = match get_object_from_handle(
             &thread,
             fltkernel::SYNCHRONIZE,
             unsafe { Some(fltkernel::PsThreadType) },
             fltkernel::KernelMode as i8,
-        );
+        ) {
+            Ok(thread) => thread,
+            Err(status) => {
+                kd_print!(
+                    c_str!("get_object_from_handle failed with status 0x%x\n"),
+                    status
+                );
+                unsafe {
+                    ZwWaitForSingleObject(
+                        thread.get_native_handle(),
+                        FALSE as u8,
+                        PLARGE_INTEGER::default(),
+                    )
+                };
 
-        kd_print!(c_str!("thread started\n"));
-        self.exit_thread.set();
-
-        unsafe {
-            ZwWaitForSingleObject(
-                thread.get_native_handle(),
-                FALSE as u8,
-                PLARGE_INTEGER::default(),
-            )
+                return Err(status);
+            }
         };
-
-        kd_print!(c_str!("thread closed\n"));
+        worker_thread.wait();
 
         Ok(0)
     }
