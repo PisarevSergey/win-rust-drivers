@@ -13,7 +13,7 @@ const STATUS_SUCCESS: NTSTATUS = 0;
 pub use _EVENT_TYPE_NotificationEvent as NotificationEvent;
 use _FLT_SET_CONTEXT_OPERATION_FLT_SET_CONTEXT_KEEP_IF_EXISTS as FLT_SET_CONTEXT_KEEP_IF_EXISTS;
 use _KWAIT_REASON_Executive as Executive;
-use _MODE_KernelMode as KernelMode;
+pub use _MODE_KernelMode as KernelMode;
 use _POOL_TYPE_NonPagedPoolNx as NonPagedPoolNx;
 
 use core::ops::{Deref, DerefMut};
