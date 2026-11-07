@@ -17,6 +17,7 @@ use _MODE_KernelMode as KernelMode;
 use _POOL_TYPE_NonPagedPoolNx as NonPagedPoolNx;
 
 use core::ops::{Deref, DerefMut};
+use core::option::Option;
 
 #[macro_export]
 macro_rules! c_str {
@@ -404,22 +405,48 @@ impl Drop for AutoHandle {
     }
 }
 
-pub struct RefObject<T> {
-    object: *mut T,
+pub struct RefObject {
+    object: PVOID,
 }
 
-impl<T> RefObject<T> {
-    pub unsafe fn get_typed_object(&self) -> *mut T {
+impl RefObject {
+    pub unsafe fn get_object(&self) -> PVOID {
         self.object
     }
+}
 
-    pub unsafe fn get_object(&self) -> PVOID {
-        self.object as PVOID
+impl Drop for RefObject {
+    fn drop(&mut self) {
+        unsafe { ObfDereferenceObject(self.object) };
     }
 }
 
-impl<T> Drop for RefObject<T> {
-    fn drop(&mut self) {
-        unsafe { ObfDereferenceObject(self.object as PVOID) };
+pub fn get_object_from_handle(
+    handle: &AutoHandle,
+    desired_access: ACCESS_MASK,
+    object_type: Option<*const POBJECT_TYPE>,
+    mode: KPROCESSOR_MODE,
+) -> core::result::Result<RefObject, NTSTATUS> {
+    let mut object_type = if let Some(object_type) = object_type {
+        unsafe { *object_type }
+    } else {
+        core::ptr::null_mut()
+    };
+
+    let mut object = PVOID::default();
+    let status = unsafe {
+        ObReferenceObjectByHandle(
+            handle.get_native_handle(),
+            desired_access,
+            object_type,
+            mode,
+            &raw mut object,
+            core::ptr::null_mut(),
+        )
+    };
+    if status != STATUS_SUCCESS {
+        return Err(status);
     }
+
+    Ok(RefObject { object: object })
 }
