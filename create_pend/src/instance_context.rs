@@ -2,8 +2,8 @@ use fltkernel::{
     _FLT_INSTANCE, DbgPrint, Event, FALSE, FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE,
     FLT_CONTEXT_TYPE, FltCbdqDisable, FltCbdqInsertIo, FltCbdqRemoveNextIo, LIST_ENTRY, NTSTATUS,
     NotificationEvent, PFLT_CALLBACK_DATA, PFLT_CONTEXT, PLARGE_INTEGER, PVOID,
-    PsTerminateSystemThread, PushLock, Semaphore, ZwClose, ZwWaitForSingleObject, c_str,
-    create_thread, initialize_list_head, kd_print,
+    PsTerminateSystemThread, PushLock, Semaphore, ZwWaitForSingleObject, c_str, create_thread,
+    initialize_list_head, kd_print,
 };
 
 use crate::STATUS_SUCCESS;
@@ -46,8 +46,13 @@ impl InstanceContext {
         kd_print!(c_str!("thread started\n"));
         self.exit_thread.set();
 
-        unsafe { ZwWaitForSingleObject(thread, FALSE as u8, PLARGE_INTEGER::default()) };
-        unsafe { ZwClose(thread) };
+        unsafe {
+            ZwWaitForSingleObject(
+                thread.get_native_handle(),
+                FALSE as u8,
+                PLARGE_INTEGER::default(),
+            )
+        };
 
         kd_print!(c_str!("thread closed\n"));
 
