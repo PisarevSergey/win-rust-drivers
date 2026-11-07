@@ -3,7 +3,7 @@ use fltkernel::{
     FLT_CONTEXT_TYPE, FltCbdqDisable, FltCbdqInsertIo, FltCbdqRemoveNextIo, LIST_ENTRY, NTSTATUS,
     NotificationEvent, PFLT_CALLBACK_DATA, PFLT_CONTEXT, PLARGE_INTEGER, PVOID,
     PsTerminateSystemThread, PushLock, Semaphore, ZwWaitForSingleObject, c_str, create_thread,
-    initialize_list_head, kd_print,
+    get_object_from_handle, initialize_list_head, kd_print,
 };
 
 use crate::STATUS_SUCCESS;
@@ -42,6 +42,13 @@ impl InstanceContext {
             Ok(thread) => thread,
             Err(status) => return Err(status),
         };
+
+        let _thread_object_result = get_object_from_handle(
+            &thread,
+            fltkernel::SYNCHRONIZE,
+            unsafe { Some(fltkernel::PsThreadType) },
+            fltkernel::KernelMode as i8,
+        );
 
         kd_print!(c_str!("thread started\n"));
         self.exit_thread.set();
