@@ -294,7 +294,10 @@ impl PushLock {
     }
 }
 
-pub fn create_thread(thread: PKSTART_ROUTINE, thread_context: PVOID) -> Result<HANDLE, NTSTATUS> {
+pub fn create_thread(
+    thread: PKSTART_ROUTINE,
+    thread_context: PVOID,
+) -> Result<AutoHandle, NTSTATUS> {
     let mut object_attributes = OBJECT_ATTRIBUTES::default();
     object_attributes.Length = core::mem::size_of_val(&object_attributes) as u32;
     object_attributes.Attributes = OBJ_KERNEL_HANDLE;
@@ -319,7 +322,9 @@ pub fn create_thread(thread: PKSTART_ROUTINE, thread_context: PVOID) -> Result<H
         return Err(status);
     }
 
-    Ok(thread_handle)
+    Ok(AutoHandle {
+        handle: thread_handle,
+    })
 }
 
 #[derive(Default)]
@@ -379,7 +384,7 @@ impl Event {
     }
 }
 
-struct AutoHandle {
+pub struct AutoHandle {
     handle: HANDLE,
 }
 
