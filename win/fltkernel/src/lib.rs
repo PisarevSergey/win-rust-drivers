@@ -413,6 +413,18 @@ impl RefObject {
     pub unsafe fn get_object(&self) -> PVOID {
         self.object
     }
+
+    pub fn wait(&mut self) -> NTSTATUS {
+        unsafe {
+            KeWaitForSingleObject(
+                &raw mut self.object as PVOID,
+                Executive,
+                KernelMode as i8,
+                FALSE as u8,
+                core::ptr::null_mut(),
+            )
+        }
+    }
 }
 
 impl Drop for RefObject {
@@ -427,7 +439,7 @@ pub fn get_object_from_handle(
     object_type: Option<*const POBJECT_TYPE>,
     mode: KPROCESSOR_MODE,
 ) -> core::result::Result<RefObject, NTSTATUS> {
-    let mut object_type = if let Some(object_type) = object_type {
+    let object_type = if let Some(object_type) = object_type {
         unsafe { *object_type }
     } else {
         core::ptr::null_mut()
