@@ -382,6 +382,10 @@ impl Event {
             )
         }
     }
+
+    pub unsafe fn get_native_event(&mut self) -> PKEVENT {
+        &raw mut self.event
+    }
 }
 
 pub struct AutoHandle {
