@@ -378,3 +378,19 @@ impl Event {
         }
     }
 }
+
+struct AutoHandle {
+    handle: HANDLE,
+}
+
+impl AutoHandle {
+    pub unsafe fn get_native_handle(&self) -> HANDLE {
+        self.handle
+    }
+}
+
+impl Drop for AutoHandle {
+    fn drop(&mut self) {
+        unsafe { ZwClose(self.handle) };
+    }
+}
