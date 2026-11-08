@@ -13,10 +13,11 @@ use core::{
 use fltkernel::{
     _FLT_VOLUME_PROPERTIES, DbgPrint, FILE_DEVICE_DISK_FILE_SYSTEM, FLT_CONTEXT_END,
     FLT_CONTEXT_REGISTRATION, FLT_FILESYSTEM_TYPE, FLT_FILTER_UNLOAD_FLAGS, FLT_INSTANCE_CONTEXT,
-    FLT_INSTANCE_SETUP_FLAGS, FLT_OPERATION_REGISTRATION, FLT_REGISTRATION,
-    FLT_REGISTRATION_VERSION, FltGetVolumeProperties, FltRegisterFilter, FltStartFiltering,
-    FltUnregisterFilter, IRP_MJ_CREATE, KeBugCheck, NTSTATUS, PAGE_SIZE, PCFLT_RELATED_OBJECTS,
-    PDRIVER_OBJECT, PFLT_FILTER, PFLT_VOLUME, PUNICODE_STRING, UCHAR, ULONG, c_str, kd_print,
+    FLT_INSTANCE_SETUP_FLAGS, FLT_INSTANCE_TEARDOWN_FLAGS, FLT_OPERATION_REGISTRATION,
+    FLT_REGISTRATION, FLT_REGISTRATION_VERSION, FltGetVolumeProperties, FltRegisterFilter,
+    FltStartFiltering, FltUnregisterFilter, IRP_MJ_CREATE, KeBugCheck, NTSTATUS, PAGE_SIZE,
+    PCFLT_RELATED_OBJECTS, PDRIVER_OBJECT, PFLT_FILTER, PFLT_VOLUME, PUNICODE_STRING, UCHAR, ULONG,
+    c_str, get_instance_context, kd_print,
 };
 
 mod create;
@@ -131,6 +132,7 @@ extern "system" fn DriverEntry(driver: PDRIVER_OBJECT, reg_path: PUNICODE_STRING
     flt_reg.Version = FLT_REGISTRATION_VERSION as u16;
     flt_reg.FilterUnloadCallback = Some(unload);
     flt_reg.InstanceSetupCallback = Some(attach);
+    flt_reg.InstanceTeardownStartCallback = Some(detach);
     flt_reg.OperationRegistration = operations.as_ptr();
     flt_reg.ContextRegistration = ctx_reg.as_ptr();
 
@@ -226,6 +228,27 @@ unsafe extern "C" fn attach(
 
     kd_print!(c_str!("attaching to volume\n"));
     STATUS_SUCCESS
+}
+
+unsafe extern "C" fn detach(
+    flt_objects: PCFLT_RELATED_OBJECTS,
+    _reason: FLT_INSTANCE_TEARDOWN_FLAGS,
+) {
+    let instance = unsafe { &mut *((*flt_objects).Instance) };
+    let mut ic = match get_instance_context::<crate::instance_context::InstanceContext>(instance) {
+        Ok(ic) => ic,
+        Err(status) => {
+            kd_print!(
+                c_str!("get_instance_context failed with status 0x%x\n"),
+                status
+            );
+            return;
+        }
+    };
+
+    kd_print!(c_str!("begin worker thread stop\n"));
+    ic.stop();
+    kd_print!(c_str!("worker thread stopped\n"));
 }
 
 unsafe fn report_volume(volume: PFLT_VOLUME) {
