@@ -98,6 +98,8 @@ impl InstanceContext {
         };
         match status {
             STATUS_SUCCESS => {
+                self.cbd_ready
+                    .release(fltkernel::IO_NO_INCREMENT as i32, 1, FALSE as u8);
                 return Ok(STATUS_SUCCESS);
             }
             _ => {
