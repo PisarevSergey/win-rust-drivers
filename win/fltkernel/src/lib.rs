@@ -8,9 +8,11 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 mod callback_data_queue;
 
 const STATUS_NOT_FOUND: NTSTATUS = 0xc000_0225_u32.cast_signed();
-const STATUS_SUCCESS: NTSTATUS = 0;
+pub const STATUS_SUCCESS: NTSTATUS = 0;
+pub const STATUS_WAIT_0: NTSTATUS = 0;
 
 pub use _EVENT_TYPE_NotificationEvent as NotificationEvent;
+pub use _FLT_PREOP_CALLBACK_STATUS_FLT_PREOP_SUCCESS_NO_CALLBACK as FLT_PREOP_SUCCESS_NO_CALLBACK;
 use _FLT_SET_CONTEXT_OPERATION_FLT_SET_CONTEXT_KEEP_IF_EXISTS as FLT_SET_CONTEXT_KEEP_IF_EXISTS;
 use _KWAIT_REASON_Executive as Executive;
 pub use _MODE_KernelMode as KernelMode;
@@ -388,8 +390,8 @@ impl Event {
         }
     }
 
-    pub unsafe fn get_native_event(&mut self) -> PKEVENT {
-        &raw mut self.event
+    pub unsafe fn get_native_event(&mut self) -> PVOID {
+        &raw mut self.event as PVOID
     }
 }
 
