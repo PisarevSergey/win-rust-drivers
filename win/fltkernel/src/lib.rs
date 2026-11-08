@@ -8,12 +8,18 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 mod callback_data_queue;
 
 const STATUS_NOT_FOUND: NTSTATUS = 0xc000_0225_u32.cast_signed();
-const STATUS_SUCCESS: NTSTATUS = 0;
+pub const STATUS_SUCCESS: NTSTATUS = 0;
+pub const STATUS_WAIT_0: NTSTATUS = 0;
 
+pub use _EVENT_TYPE_NotificationEvent as NotificationEvent;
+pub use _FLT_PREOP_CALLBACK_STATUS_FLT_PREOP_SUCCESS_NO_CALLBACK as FLT_PREOP_SUCCESS_NO_CALLBACK;
 use _FLT_SET_CONTEXT_OPERATION_FLT_SET_CONTEXT_KEEP_IF_EXISTS as FLT_SET_CONTEXT_KEEP_IF_EXISTS;
+use _KWAIT_REASON_Executive as Executive;
+pub use _MODE_KernelMode as KernelMode;
 use _POOL_TYPE_NonPagedPoolNx as NonPagedPoolNx;
 
 use core::ops::{Deref, DerefMut};
+use core::option::Option;
 
 #[macro_export]
 macro_rules! c_str {
@@ -289,4 +295,176 @@ impl PushLock {
     pub fn release(&mut self) {
         unsafe { FltReleasePushLock(&raw mut self.lock) };
     }
+}
+
+pub fn create_thread(
+    thread: PKSTART_ROUTINE,
+    thread_context: PVOID,
+) -> Result<AutoHandle, NTSTATUS> {
+    let mut object_attributes = OBJECT_ATTRIBUTES::default();
+    object_attributes.Length = core::mem::size_of_val(&object_attributes) as u32;
+    object_attributes.Attributes = OBJ_KERNEL_HANDLE;
+
+    let mut thread_handle = HANDLE::default();
+    let status = unsafe {
+        PsCreateSystemThread(
+            &raw mut thread_handle,
+            SYNCHRONIZE,
+            &raw mut object_attributes,
+            HANDLE::default(),
+            PCLIENT_ID::default(),
+            thread,
+            thread_context,
+        )
+    };
+    if status != STATUS_SUCCESS {
+        kd_print!(
+            c_str!("PsCreateSystemThread failed with status 0x%x\n"),
+            status
+        );
+        return Err(status);
+    }
+
+    Ok(AutoHandle {
+        handle: thread_handle,
+    })
+}
+
+#[derive(Default)]
+pub struct Semaphore {
+    semaphore: KSEMAPHORE,
+}
+
+impl Semaphore {
+    pub fn init(&mut self, count: LONG, limit: LONG) {
+        unsafe {
+            KeInitializeSemaphore(&raw mut self.semaphore, count, limit);
+        };
+    }
+
+    pub fn release(
+        &mut self,
+        priority_increment: KPRIORITY,
+        adjustment: LONG,
+        wait: BOOLEAN,
+    ) -> LONG {
+        unsafe {
+            KeReleaseSemaphore(
+                &raw mut self.semaphore,
+                priority_increment,
+                adjustment,
+                wait,
+            )
+        }
+    }
+
+    pub unsafe fn get_native_semaphore(&mut self) -> PVOID {
+        &raw mut self.semaphore as PVOID
+    }
+}
+
+#[derive(Default)]
+pub struct Event {
+    event: KEVENT,
+}
+
+impl Event {
+    pub fn init(&mut self, event_type: EVENT_TYPE, state: bool) {
+        let state = if state { TRUE } else { FALSE } as u8;
+        unsafe { KeInitializeEvent(&raw mut self.event, event_type, state) };
+    }
+
+    pub fn set(&mut self) -> LONG {
+        unsafe { KeSetEvent(&raw mut self.event, IO_NO_INCREMENT as i32, FALSE as u8) }
+    }
+
+    pub fn wait(&mut self) -> NTSTATUS {
+        unsafe {
+            KeWaitForSingleObject(
+                &raw mut self.event as PVOID,
+                Executive,
+                KernelMode as i8,
+                FALSE as u8,
+                core::ptr::null_mut(),
+            )
+        }
+    }
+
+    pub unsafe fn get_native_event(&mut self) -> PVOID {
+        &raw mut self.event as PVOID
+    }
+}
+
+pub struct AutoHandle {
+    handle: HANDLE,
+}
+
+impl AutoHandle {
+    pub unsafe fn get_native_handle(&self) -> HANDLE {
+        self.handle
+    }
+}
+
+impl Drop for AutoHandle {
+    fn drop(&mut self) {
+        unsafe { ZwClose(self.handle) };
+    }
+}
+
+pub struct RefObject {
+    object: PVOID,
+}
+
+impl RefObject {
+    pub unsafe fn get_object(&self) -> PVOID {
+        self.object
+    }
+
+    pub fn wait(&mut self) -> NTSTATUS {
+        unsafe {
+            KeWaitForSingleObject(
+                self.object,
+                Executive,
+                KernelMode as i8,
+                FALSE as u8,
+                core::ptr::null_mut(),
+            )
+        }
+    }
+}
+
+impl Drop for RefObject {
+    fn drop(&mut self) {
+        unsafe { ObfDereferenceObject(self.object) };
+    }
+}
+
+pub fn get_object_from_handle(
+    handle: &AutoHandle,
+    desired_access: ACCESS_MASK,
+    object_type: Option<*const POBJECT_TYPE>,
+    mode: KPROCESSOR_MODE,
+) -> core::result::Result<RefObject, NTSTATUS> {
+    let object_type = if let Some(object_type) = object_type {
+        unsafe { *object_type }
+    } else {
+        core::ptr::null_mut()
+    };
+
+    let mut object = PVOID::default();
+    let status = unsafe {
+        ObReferenceObjectByHandle(
+            handle.get_native_handle(),
+            desired_access,
+            object_type,
+            mode,
+            &raw mut object,
+            core::ptr::null_mut(),
+        )
+    };
+    if status != STATUS_SUCCESS {
+        return Err(status);
+    }
+
+    Ok(RefObject { object: object })
 }
