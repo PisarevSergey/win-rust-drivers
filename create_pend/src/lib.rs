@@ -220,6 +220,7 @@ unsafe extern "C" fn attach(
             c_str!("failed to set instance context with status 0x%x\n"),
             status
         );
+        instance_ctx.stop();
         return STATUS_FLT_DO_NOT_ATTACH;
     }
 
