@@ -423,7 +423,7 @@ impl RefObject {
     pub fn wait(&mut self) -> NTSTATUS {
         unsafe {
             KeWaitForSingleObject(
-                &raw mut self.object as PVOID,
+                self.object,
                 Executive,
                 KernelMode as i8,
                 FALSE as u8,
