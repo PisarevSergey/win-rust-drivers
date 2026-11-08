@@ -1,12 +1,13 @@
 use fltkernel::{
-    _FLT_INSTANCE, DbgPrint, Event, FALSE, FLT_CALLBACK_DATA, FLT_CALLBACK_DATA_QUEUE,
-    FLT_CONTEXT_TYPE, FltCbdqDisable, FltCbdqInsertIo, FltCbdqRemoveNextIo, LIST_ENTRY, NTSTATUS,
+    _FLT_INSTANCE, _KWAIT_REASON_Executive as Executive, _MODE_KernelMode as KernelMode,
+    _WAIT_TYPE_WaitAny as WaitAny, DbgPrint, Event, FALSE, FLT_CALLBACK_DATA,
+    FLT_CALLBACK_DATA_QUEUE, FLT_CONTEXT_TYPE, FLT_PREOP_SUCCESS_NO_CALLBACK, FltCbdqDisable,
+    FltCbdqInsertIo, FltCbdqRemoveNextIo, KeWaitForMultipleObjects, LIST_ENTRY, NTSTATUS,
     NotificationEvent, PFLT_CALLBACK_DATA, PFLT_CONTEXT, PLARGE_INTEGER, PVOID,
-    PsTerminateSystemThread, PushLock, Semaphore, ZwWaitForSingleObject, c_str, create_thread,
-    get_object_from_handle, initialize_list_head, kd_print,
+    PsTerminateSystemThread, PushLock, RefObject, STATUS_SUCCESS, STATUS_WAIT_0, Semaphore,
+    ZwWaitForSingleObject, c_str, create_thread, get_object_from_handle, initialize_list_head,
+    kd_print,
 };
-
-use crate::STATUS_SUCCESS;
 
 mod cbd_queue;
 
@@ -18,6 +19,7 @@ pub struct InstanceContext {
     pended_cbds: LIST_ENTRY,
     cbd_ready: Semaphore,
     exit_thread: Event,
+    worker_thread: core::option::Option<RefObject>,
 }
 
 impl InstanceContext {
@@ -43,9 +45,8 @@ impl InstanceContext {
             Err(status) => return Err(status),
         };
         kd_print!(c_str!("thread started\n"));
-        self.exit_thread.set(); // TODO: move to drop
 
-        let mut worker_thread = match get_object_from_handle(
+        let worker_thread = match get_object_from_handle(
             &thread,
             fltkernel::SYNCHRONIZE,
             unsafe { Some(fltkernel::PsThreadType) },
@@ -57,6 +58,9 @@ impl InstanceContext {
                     c_str!("get_object_from_handle failed with status 0x%x\n"),
                     status
                 );
+
+                self.stop();
+
                 unsafe {
                     ZwWaitForSingleObject(
                         thread.get_native_handle(),
@@ -68,14 +72,20 @@ impl InstanceContext {
                 return Err(status);
             }
         };
-        worker_thread.wait();
+        self.worker_thread = Some(worker_thread);
 
         Ok(0)
     }
 
-    // pub fn stop(&mut self){
+    pub fn stop(&mut self) {
+        self.disable_queue();
 
-    // }
+        self.exit_thread.set();
+
+        if let Some(ref mut thread) = self.worker_thread {
+            thread.wait();
+        }
+    }
 
     pub fn pend_cbd(&mut self, cbd: PFLT_CALLBACK_DATA) -> Result<NTSTATUS, NTSTATUS> {
         let status = unsafe {
@@ -110,7 +120,7 @@ impl InstanceContext {
         Ok(cbd)
     }
 
-    pub fn disable_queue(&mut self) {
+    fn disable_queue(&mut self) {
         unsafe { FltCbdqDisable(&raw mut self.cbdq) };
     }
 }
@@ -125,7 +135,39 @@ pub unsafe extern "C" fn instance_context_cleanup(
 unsafe extern "C" fn cbd_completer_worker(start_context: PVOID) {
     kd_print!(c_str!("enter thread\n"));
     let ic = unsafe { &mut *(start_context as *mut InstanceContext) };
-    ic.exit_thread.wait();
+
+    loop {
+        let mut wait_objects = [unsafe { ic.cbd_ready.get_native_semaphore() }, unsafe {
+            ic.exit_thread.get_native_event()
+        }];
+        let status = unsafe {
+            KeWaitForMultipleObjects(
+                2,
+                wait_objects.as_mut_ptr(),
+                WaitAny,
+                Executive,
+                KernelMode as i8,
+                FALSE as u8,
+                core::ptr::null_mut(),
+                core::ptr::null_mut(),
+            )
+        };
+
+        while let Ok(cbd) = ic.extract_pended_cbd() {
+            unsafe {
+                fltkernel::FltCompletePendedPreOperation(
+                    cbd,
+                    FLT_PREOP_SUCCESS_NO_CALLBACK,
+                    core::ptr::null_mut(),
+                )
+            };
+        }
+
+        if status != STATUS_WAIT_0 {
+            break;
+        }
+    }
+
     kd_print!(c_str!("exiting thread\n"));
     unsafe { PsTerminateSystemThread(STATUS_SUCCESS) };
 }
