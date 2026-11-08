@@ -35,16 +35,6 @@ pub unsafe extern "C" fn pre_create(
         return FLT_PREOP_SUCCESS_NO_CALLBACK;
     };
 
-    while let Ok(cbd) = ic.extract_pended_cbd() {
-        unsafe {
-            fltkernel::FltCompletePendedPreOperation(
-                cbd,
-                FLT_PREOP_SUCCESS_NO_CALLBACK,
-                core::ptr::null_mut(),
-            )
-        };
-    }
-
     FLT_PREOP_PENDING
 }
 
