@@ -157,6 +157,9 @@ unsafe extern "C" fn cbd_completer_worker(start_context: PVOID) {
 
         while let Ok(cbd) = ic.extract_pended_cbd() {
             unsafe {
+                let data = &mut *cbd;
+                crate::create::report_cbd(&mut (*crate::FILTER), data);
+
                 fltkernel::FltCompletePendedPreOperation(
                     cbd,
                     FLT_PREOP_SUCCESS_NO_CALLBACK,
