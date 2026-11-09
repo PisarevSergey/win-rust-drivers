@@ -38,7 +38,7 @@ pub unsafe extern "C" fn pre_create(
     FLT_PREOP_PENDING
 }
 
-fn report_cbd(filter: &mut FLT_FILTER, cbd: &mut FLT_CALLBACK_DATA) {
+pub fn report_cbd(filter: &mut FLT_FILTER, cbd: &mut FLT_CALLBACK_DATA) {
     report_requestor_mode(cbd);
     report_file_path(cbd);
     report_extended_attributes(cbd);
