@@ -26,29 +26,23 @@ fn main() {
     }
 
     let target = env::var("TARGET").unwrap();
-    match target.as_str() {
-        "aarch64-pc-windows-msvc" => {
-            let mut defs = [
-                "_ARM64_".to_string(),
-                "ARM64".to_string(),
-                "_USE_DECLSPECS_FOR_SAL=1".to_string(),
-                "STD_CALL".to_string(),
-                "_ARM64_WINAPI_PARTITION_DESKTOP_SDK_AVAILABLE=1".to_string(),
-            ];
-            defs.iter_mut().for_each(|s| s.insert_str(0, "-D"));
-            clang_args.append(&mut Vec::from(defs));
-        }
-        "x86_64-pc-windows-msvc" => {
-            let mut defs = [
-                "_WIN64".to_string(),
-                "_AMD64_".to_string(),
-                "AMD64".to_string(),
-            ];
-            defs.iter_mut().for_each(|s| s.insert_str(0, "-D"));
-            clang_args.append(&mut Vec::from(defs));
-        }
+    let mut defs = match target.as_str() {
+        "aarch64-pc-windows-msvc" => vec![
+            "_ARM64_".to_string(),
+            "ARM64".to_string(),
+            "_USE_DECLSPECS_FOR_SAL=1".to_string(),
+            "STD_CALL".to_string(),
+            "_ARM64_WINAPI_PARTITION_DESKTOP_SDK_AVAILABLE=1".to_string(),
+        ],
+        "x86_64-pc-windows-msvc" => vec![
+            "_WIN64".to_string(),
+            "_AMD64_".to_string(),
+            "AMD64".to_string(),
+        ],
         _ => panic!("unsupported target {target}"),
-    }
+    };
+    defs.iter_mut().for_each(|s| s.insert_str(0, "-D"));
+    clang_args.append(&mut defs);
 
     // clang_args.push(String::from("-fpack-struct=8"));
 
