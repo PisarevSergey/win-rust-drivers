@@ -7,3 +7,6 @@ edition = "2024"
 
 [build-dependencies]
 bindgen = "*"
+
+[features]
+wdm = []
