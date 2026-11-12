@@ -52,7 +52,7 @@ fn main() {
     let bindings = bindgen::Builder::default()
         // The input header we would like to generate
         // bindings for.
-        .header("wdm.h")
+        .header(get_wdk_header_file_name())
         .clang_args(clang_args)
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed.
@@ -69,7 +69,7 @@ fn main() {
     // Write the bindings to the $OUT_DIR/bindings.rs file.
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
-        .write_to_file(out_path.join("wdm.rs"))
+        .write_to_file(out_path.join(get_bindings_file_name()))
         .expect("Couldn't write bindings!");
 }
 
@@ -104,4 +104,24 @@ fn get_km_crt_inc_dir() -> String {
     crt_inc.push_str(r"\crt");
 
     crt_inc
+}
+
+fn get_wdk_header_file_name() -> String {
+    let mut name = get_name_for_generation();
+    name.push_str(".h");
+    name
+}
+
+fn get_bindings_file_name() -> String {
+    let mut name = get_name_for_generation();
+    name.push_str(".rs");
+    name
+}
+
+fn get_name_for_generation() -> String {
+    #[cfg(feature = "wdm")]
+    return String::from("wdm");
+
+    #[cfg(feature = "fltkernel")]
+    return String::from("fltkernel");
 }

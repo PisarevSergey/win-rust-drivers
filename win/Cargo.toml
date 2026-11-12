@@ -10,3 +10,4 @@ bindgen = "*"
 
 [features]
 wdm = []
+fltkernel = []
