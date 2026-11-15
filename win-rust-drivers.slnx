@@ -3,6 +3,9 @@
     <Platform Name="ARM64" />
     <Platform Name="x64" />
   </Configurations>
+  <Project Path="central/central.vcxproj">
+    <Deploy />
+  </Project>
   <Project Path="create_pend/create_pend.vcxproj">
     <Deploy />
   </Project>

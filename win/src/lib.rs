@@ -4,10 +4,15 @@
 #![allow(non_snake_case)]
 
 #[cfg(feature = "wdm")]
-pub mod wdm;
+mod wdm;
 
 #[cfg(feature = "ntddk")]
-pub mod ntddk;
+mod ntddk;
 
 #[cfg(feature = "fltkernel")]
-pub mod fltkernel;
+mod fltkernel;
+
+#[cfg(feature = "fltkernel")]
+pub use fltkernel::*;
+
+pub const STATUS_SUCCESS: NTSTATUS = 0;
