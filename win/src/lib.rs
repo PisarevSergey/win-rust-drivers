@@ -10,4 +10,10 @@ pub mod wdm;
 pub mod ntddk;
 
 #[cfg(feature = "fltkernel")]
-pub mod fltkernel;
+mod fltkernel;
+
+#[cfg(feature = "fltkernel")]
+pub use fltkernel::*;
+
+// pub use crate::NTSTATUS;
+// pub use crate::KeBugCheck;
