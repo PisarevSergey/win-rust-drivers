@@ -2,7 +2,9 @@
 
 use core::panic::PanicInfo;
 
-use win::{NTSTATUS, PDRIVER_OBJECT, PUNICODE_STRING, STATUS_SUCCESS};
+use win::{
+    DbgPrint, NTSTATUS, PCSTR, PDRIVER_OBJECT, PUNICODE_STRING, STATUS_SUCCESS, kd_print_ln,
+};
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -11,5 +13,6 @@ fn panic(_info: &PanicInfo) -> ! {
 
 #[unsafe(no_mangle)]
 extern "system" fn DriverEntry(driver: PDRIVER_OBJECT, reg_path: PUNICODE_STRING) -> NTSTATUS {
+    kd_print_ln!("DriverEntry: driver - %p; reg path: %wZ", driver, reg_path);
     STATUS_SUCCESS
 }
