@@ -5,3 +5,9 @@
 
 #[cfg(feature = "wdm")]
 pub mod wdm;
+
+#[cfg(feature = "ntddk")]
+pub mod ntddk;
+
+#[cfg(feature = "fltkernel")]
+pub mod fltkernel;
