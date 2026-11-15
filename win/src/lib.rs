@@ -14,6 +14,3 @@ mod fltkernel;
 
 #[cfg(feature = "fltkernel")]
 pub use fltkernel::*;
-
-// pub use crate::NTSTATUS;
-// pub use crate::KeBugCheck;
