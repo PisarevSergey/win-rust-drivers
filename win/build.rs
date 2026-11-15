@@ -122,6 +122,9 @@ fn get_name_for_generation() -> String {
     #[cfg(feature = "wdm")]
     return String::from("wdm");
 
+    #[cfg(feature = "ntddk")]
+    return String::from("ntddk");
+
     #[cfg(feature = "fltkernel")]
     return String::from("fltkernel");
 }
