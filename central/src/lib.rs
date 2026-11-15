@@ -1,5 +1,7 @@
 #![no_std]
 
+mod control_device;
+
 use core::panic::PanicInfo;
 
 use win::{
@@ -17,6 +19,8 @@ extern "system" fn DriverEntry(driver: PDRIVER_OBJECT, reg_path: PUNICODE_STRING
 
     let driver = unsafe { &mut *driver };
     driver.DriverUnload = Some(unload);
+
+    let cdo = control_device::create_device(driver);
 
     STATUS_SUCCESS
 }
