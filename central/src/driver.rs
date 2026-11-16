@@ -5,7 +5,9 @@ use crate::control_device::{SymLink, try_create_device};
 use core::option::Option;
 
 pub struct Driver {
+    #[allow(dead_code)]
     cdo: Option<AutoDeleteDevice>,
+    #[allow(dead_code)]
     symlink: Option<SymLink>,
 }
 
