@@ -41,6 +41,7 @@ pub struct AutoDeleteDevice {
 
 impl Drop for AutoDeleteDevice {
     fn drop(&mut self) {
+        kd_print_ln!("call IoDeleteDevice for %p", self.device);
         unsafe { IoDeleteDevice(self.device) };
     }
 }
