@@ -66,25 +66,81 @@
   <PropertyGroup />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <Inf2CatUseLocalTime>true</Inf2CatUseLocalTime>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <Inf2CatUseLocalTime>true</Inf2CatUseLocalTime>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <Inf2CatUseLocalTime>true</Inf2CatUseLocalTime>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <Inf2CatUseLocalTime>true</Inf2CatUseLocalTime>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DriverSign>
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
     </DriverSign>
+    <ClCompile>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <PreLinkEvent>
+      <Command>cargo build --target x86_64-pc-windows-msvc --profile dev --verbose</Command>
+    </PreLinkEvent>
+    <PreBuildEvent>
+    </PreBuildEvent>
+    <Link>
+      <AdditionalLibraryDirectories>$(ProjectDir)target\x86_64-pc-windows-msvc\debug\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies);$(KernelBufferOverflowLib);$(DDK_LIB_PATH)ntoskrnl.lib;$(DDK_LIB_PATH)hal.lib;$(DDK_LIB_PATH)wmilib.lib;$(DDK_LIB_PATH)wdmsec.lib;$(DDK_LIB_PATH)ntstrsafe.lib;pmon_lib.lib</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DriverSign>
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
     </DriverSign>
+    <ClCompile>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <PreLinkEvent>
+      <Command>cargo build --target x86_64-pc-windows-msvc --profile release</Command>
+    </PreLinkEvent>
+    <PreBuildEvent>
+    </PreBuildEvent>
+    <Link>
+      <AdditionalDependencies>%(AdditionalDependencies);$(KernelBufferOverflowLib);$(DDK_LIB_PATH)ntoskrnl.lib;$(DDK_LIB_PATH)hal.lib;$(DDK_LIB_PATH)wmilib.lib;$(DDK_LIB_PATH)wdmsec.lib;$(DDK_LIB_PATH)ntstrsafe.lib;pmon_lib.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)target\x86_64-pc-windows-msvc\release\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
+    <ClCompile>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <PreLinkEvent>
+      <Command>cargo build --target aarch64-pc-windows-msvc --profile dev --verbose</Command>
+    </PreLinkEvent>
+    <PreBuildEvent>
+    </PreBuildEvent>
+    <Link>
+      <AdditionalDependencies>%(AdditionalDependencies);$(KernelBufferOverflowLib);$(DDK_LIB_PATH)ntoskrnl.lib;$(DDK_LIB_PATH)hal.lib;$(DDK_LIB_PATH)wmilib.lib;$(DDK_LIB_PATH)wdmsec.lib;$(DDK_LIB_PATH)ntstrsafe.lib;pmon_lib.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)target\aarch64-pc-windows-msvc\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
+    <ClCompile>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <PreLinkEvent>
+      <Command>cargo build --target aarch64-pc-windows-msvc --profile release</Command>
+    </PreLinkEvent>
+    <PreBuildEvent>
+    </PreBuildEvent>
+    <Link>
+      <AdditionalDependencies>%(AdditionalDependencies);$(KernelBufferOverflowLib);$(DDK_LIB_PATH)ntoskrnl.lib;$(DDK_LIB_PATH)hal.lib;$(DDK_LIB_PATH)wmilib.lib;$(DDK_LIB_PATH)wdmsec.lib;$(DDK_LIB_PATH)ntstrsafe.lib;pmon_lib.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)target\aarch64-pc-windows-msvc\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <Inf Include="pmon.inf" />
@@ -98,4 +154,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <Target Name="TouchMain" BeforeTargets="ClCompile">
+    <Touch Files="main.cpp" />
+  </Target>
 </Project>
