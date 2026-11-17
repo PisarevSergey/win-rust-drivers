@@ -1,4 +1,4 @@
-use win::{AutoDeleteDevice, DRIVER_OBJECT, DbgPrint, NTSTATUS, PCSTR, kd_print_ln};
+use win::{AutoDeleteDevice, DRIVER_OBJECT, DbgPrint, NTSTATUS, PCSTR, kd_print_ln, PDEVICE_OBJECT};
 
 use crate::control_device::{SymLink, try_create_device};
 
@@ -30,3 +30,15 @@ impl Driver {
         })
     }
 }
+
+    unsafe extern "C" fn on_create(device_object: PDEVICE_OBJECT, irp: PIRP) -> NTSTATUS{
+
+    }
+
+        unsafe extern "C" fn on_cleanup(device_object: PDEVICE_OBJECT, irp: PIRP) -> NTSTATUS{
+        
+    }
+
+        unsafe extern "C" fn on_close(device_object: PDEVICE_OBJECT, irp: PIRP) -> NTSTATUS{
+        
+    }
