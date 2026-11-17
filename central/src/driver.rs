@@ -1,7 +1,7 @@
 use win::{
     AutoDeleteDevice, DRIVER_OBJECT, DbgPrint, IO_NO_INCREMENT, IRP, IRP_MJ_CLEANUP, IRP_MJ_CLOSE,
-    IRP_MJ_CREATE, IofCompleteRequest, NTSTATUS, PCSTR, PDEVICE_OBJECT, PIRP, STATUS_SUCCESS,
-    ULONG_PTR, get_irp_status, kd_print_ln,
+    IRP_MJ_CREATE, IRP_MJ_DEVICE_CONTROL, IofCompleteRequest, NTSTATUS, PCSTR, PDEVICE_OBJECT,
+    PIRP, STATUS_SUCCESS, ULONG_PTR, get_current_stack_location, get_irp_status, kd_print_ln,
 };
 
 use crate::control_device::{SymLink, try_create_device};
@@ -30,6 +30,7 @@ impl Driver {
         driver.MajorFunction[IRP_MJ_CREATE as usize] = Some(on_create);
         driver.MajorFunction[IRP_MJ_CLEANUP as usize] = Some(on_cleanup);
         driver.MajorFunction[IRP_MJ_CLOSE as usize] = Some(on_close);
+        driver.MajorFunction[IRP_MJ_DEVICE_CONTROL as usize] = Some(on_ioctl);
 
         kd_print_ln!("driver create success");
         Ok(Driver {
@@ -37,6 +38,17 @@ impl Driver {
             symlink: Some(symlink),
         })
     }
+}
+
+unsafe extern "C" fn on_ioctl(_device_object: PDEVICE_OBJECT, irp: PIRP) -> NTSTATUS {
+    let irp = unsafe { &mut *irp };
+
+    let current_sl = get_current_stack_location(irp);
+    let code = unsafe { current_sl.Parameters.DeviceIoControl.IoControlCode };
+
+    kd_print_ln!("ioctl 0x%x for device %p", code, _device_object);
+
+    complete_irp_success(irp)
 }
 
 unsafe extern "C" fn on_create(_device_object: PDEVICE_OBJECT, irp: PIRP) -> NTSTATUS {
