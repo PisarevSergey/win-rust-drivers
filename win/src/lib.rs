@@ -7,8 +7,14 @@
 #[cfg(feature = "wdm")]
 mod wdm;
 
+#[cfg(feature = "wdm")]
+pub use wdm::*;
+
 #[cfg(feature = "ntddk")]
 mod ntddk;
+
+#[cfg(feature = "ntddk")]
+pub use ntddk::*;
 
 #[cfg(feature = "fltkernel")]
 mod fltkernel;
