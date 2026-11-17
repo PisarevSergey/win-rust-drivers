@@ -3,7 +3,7 @@ use win::{
     PsSetCreateProcessNotifyRoutineEx, STATUS_SUCCESS, TRUE, kd_print_ln,
 };
 
-struct ProcessCreateNotify {}
+pub struct ProcessCreateNotify {}
 
 impl ProcessCreateNotify {
     pub fn try_create() -> core::result::Result<Self, NTSTATUS> {
