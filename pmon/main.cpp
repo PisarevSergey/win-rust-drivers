@@ -1,6 +1,13 @@
 #include <wdm.h>
 
-extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT, PUNICODE_STRING)
-{
-    return STATUS_UNSUCCESSFUL;
+extern "C" {
+
+void *__CxxFrameHandler3([[maybe_unused]] void *pExcept,
+                         [[maybe_unused]] void *pRN,
+                         [[maybe_unused]] void *pContext,
+                         [[maybe_unused]] void *pDC) {
+  ASSERT(false);
+  return nullptr;
+}
+
 }
