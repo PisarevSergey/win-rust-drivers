@@ -1,7 +1,8 @@
 use crate::process_notify::ProcessCreateNotify;
 use win::NTSTATUS;
 
-struct Driver {
+pub struct Driver {
+    #[allow(dead_code)]
     proc_create_notify: core::option::Option<ProcessCreateNotify>,
 }
 
