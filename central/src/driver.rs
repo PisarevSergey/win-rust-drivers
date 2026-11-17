@@ -1,4 +1,8 @@
-use win::{AutoDeleteDevice, DRIVER_OBJECT, DbgPrint, NTSTATUS, PCSTR, kd_print_ln, PDEVICE_OBJECT};
+use win::{
+    AutoDeleteDevice, DRIVER_OBJECT, DbgPrint, IO_NO_INCREMENT, IRP, IRP_MJ_CLEANUP, IRP_MJ_CLOSE,
+    IRP_MJ_CREATE, IofCompleteRequest, NTSTATUS, PCSTR, PDEVICE_OBJECT, PIRP, STATUS_SUCCESS,
+    get_irp_status, kd_print_ln,
+};
 
 use crate::control_device::{SymLink, try_create_device};
 
@@ -23,6 +27,10 @@ impl Driver {
         let cdo = try_create_device(driver)?;
         let symlink = SymLink::try_create()?;
 
+        driver.MajorFunction[IRP_MJ_CREATE as usize] = Some(on_create);
+        driver.MajorFunction[IRP_MJ_CLEANUP as usize] = Some(on_cleanup);
+        driver.MajorFunction[IRP_MJ_CLOSE as usize] = Some(on_close);
+
         kd_print_ln!("driver create success");
         Ok(Driver {
             cdo: Some(cdo),
@@ -31,14 +39,32 @@ impl Driver {
     }
 }
 
-    unsafe extern "C" fn on_create(device_object: PDEVICE_OBJECT, irp: PIRP) -> NTSTATUS{
+unsafe extern "C" fn on_create(_device_object: PDEVICE_OBJECT, irp: PIRP) -> NTSTATUS {
+    kd_print_ln!("create for device %p", _device_object);
 
-    }
+    let irp = unsafe { &mut *irp };
+    complete_irp_success(irp)
+}
 
-        unsafe extern "C" fn on_cleanup(device_object: PDEVICE_OBJECT, irp: PIRP) -> NTSTATUS{
-        
-    }
+unsafe extern "C" fn on_cleanup(_device_object: PDEVICE_OBJECT, irp: PIRP) -> NTSTATUS {
+    kd_print_ln!("cleanup for device %p", _device_object);
 
-        unsafe extern "C" fn on_close(device_object: PDEVICE_OBJECT, irp: PIRP) -> NTSTATUS{
-        
-    }
+    let irp = unsafe { &mut *irp };
+    complete_irp_success(irp)
+}
+
+unsafe extern "C" fn on_close(_device_object: PDEVICE_OBJECT, irp: PIRP) -> NTSTATUS {
+    kd_print_ln!("close for device %p", _device_object);
+
+    let irp = unsafe { &mut *irp };
+    complete_irp_success(irp)
+}
+
+fn complete_irp_success(irp: &mut IRP) -> NTSTATUS {
+    *get_irp_status(irp) = STATUS_SUCCESS;
+    irp.IoStatus.Information = 0;
+
+    unsafe { IofCompleteRequest(irp, IO_NO_INCREMENT as i8) };
+
+    STATUS_SUCCESS
+}
