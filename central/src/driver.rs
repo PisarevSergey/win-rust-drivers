@@ -1,7 +1,7 @@
 use win::{
     AutoDeleteDevice, DRIVER_OBJECT, DbgPrint, IO_NO_INCREMENT, IRP, IRP_MJ_CLEANUP, IRP_MJ_CLOSE,
     IRP_MJ_CREATE, IofCompleteRequest, NTSTATUS, PCSTR, PDEVICE_OBJECT, PIRP, STATUS_SUCCESS,
-    get_irp_status, kd_print_ln,
+    ULONG_PTR, get_irp_status, kd_print_ln,
 };
 
 use crate::control_device::{SymLink, try_create_device};
@@ -61,10 +61,14 @@ unsafe extern "C" fn on_close(_device_object: PDEVICE_OBJECT, irp: PIRP) -> NTST
 }
 
 fn complete_irp_success(irp: &mut IRP) -> NTSTATUS {
-    *get_irp_status(irp) = STATUS_SUCCESS;
-    irp.IoStatus.Information = 0;
+    complete_irp_with_params(irp, STATUS_SUCCESS, 0)
+}
+
+fn complete_irp_with_params(irp: &mut IRP, status: NTSTATUS, info: ULONG_PTR) -> NTSTATUS {
+    *get_irp_status(irp) = status;
+    irp.IoStatus.Information = info;
 
     unsafe { IofCompleteRequest(irp, IO_NO_INCREMENT as i8) };
 
-    STATUS_SUCCESS
+    status
 }
