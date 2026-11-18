@@ -1,6 +1,6 @@
 use win::{
-    AutoDeleteDevice, DRIVER_OBJECT, DbgPrint, GUID, IoCreateSymbolicLink, NTSTATUS, PCSTR, PWCH,
-    STATUS_SUCCESS, UNICODE_STRING, create_device_secure, kd_print_ln,
+    AutoDeleteDevice, DRIVER_OBJECT, GUID, IoCreateSymbolicLink, NTSTATUS, PWCH, STATUS_SUCCESS,
+    UNICODE_STRING, create_device_secure, kd_print_ln,
 };
 
 const CDO_CLASS: GUID = GUID {

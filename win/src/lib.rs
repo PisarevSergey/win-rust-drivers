@@ -31,7 +31,7 @@ macro_rules! kd_print_ln
     ($fmt:expr $(, $arg:expr)*) => {
         let c_fmt = concat!($fmt, "\n\0");
         unsafe {
-            DbgPrint(c_fmt.as_ptr() as PCSTR $(, $arg)*);
+            crate::DbgPrint(c_fmt.as_ptr() as crate::PCSTR $(, $arg)*);
         }
     }
 }

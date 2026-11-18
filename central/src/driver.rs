@@ -1,7 +1,7 @@
 use win::{
-    AutoDeleteDevice, DRIVER_OBJECT, DbgPrint, IO_NO_INCREMENT, IRP, IRP_MJ_CLEANUP, IRP_MJ_CLOSE,
-    IRP_MJ_CREATE, IRP_MJ_DEVICE_CONTROL, IofCompleteRequest, NTSTATUS, PCSTR, PDEVICE_OBJECT,
-    PIRP, STATUS_SUCCESS, ULONG_PTR, get_current_stack_location, get_irp_status, kd_print_ln,
+    AutoDeleteDevice, DRIVER_OBJECT, IO_NO_INCREMENT, IRP, IRP_MJ_CLEANUP, IRP_MJ_CLOSE,
+    IRP_MJ_CREATE, IRP_MJ_DEVICE_CONTROL, IofCompleteRequest, NTSTATUS, PDEVICE_OBJECT, PIRP,
+    STATUS_SUCCESS, ULONG_PTR, get_current_stack_location, get_irp_status, kd_print_ln,
 };
 
 use crate::control_device::{SymLink, try_create_device};
