@@ -13,7 +13,7 @@ const CDO_CLASS: GUID = GUID {
 const CDO_NAME_RAW: &[u16] = wchar::wchz!(r"\Device\central_cdo");
 const DOS_NAME_RAW: &[u16] = wchar::wchz!(r"\DosDevices\central_cdo");
 
-const CDO_NAME: UNICODE_STRING = UNICODE_STRING {
+pub const CDO_NAME: UNICODE_STRING = UNICODE_STRING {
     Length: 2 * CDO_NAME_RAW.len() as u16,
     MaximumLength: 2 * CDO_NAME_RAW.len() as u16,
     Buffer: CDO_NAME_RAW.as_ptr() as PWCH,
