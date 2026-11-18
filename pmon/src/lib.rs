@@ -31,7 +31,7 @@ extern "system" fn DriverEntry(driver: PDRIVER_OBJECT, reg_path: PUNICODE_STRING
 
 unsafe extern "C" fn unload(driver_object: PDRIVER_OBJECT) {
     kd_print_ln!("unloading driver %p", driver_object);
-    unsafe { core::ptr::drop_in_place(&raw mut DRIVER) };
+    unsafe { DRIVER = Driver::new() };
 }
 
 #[panic_handler]
