@@ -4,6 +4,8 @@
 #![allow(non_snake_case)]
 #![allow(suspicious_runtime_symbol_definitions)]
 
+use core::result::Result;
+
 #[cfg(feature = "wdm")]
 mod wdm;
 
@@ -62,7 +64,7 @@ pub fn create_device_secure(
     exclusive: bool,
     default_sddl: &UNICODE_STRING,
     device_class: core::option::Option<&GUID>,
-) -> core::result::Result<AutoDeleteDevice, NTSTATUS> {
+) -> Result<AutoDeleteDevice, NTSTATUS> {
     let mut cdo = PDEVICE_OBJECT::default();
     let device_name = match device_name {
         Some(device_name) => &raw mut *device_name,
@@ -111,4 +113,14 @@ pub fn get_current_stack_location(irp: &mut IRP) -> &mut IO_STACK_LOCATION {
 
 pub fn get_irp_status(irp: &mut IRP) -> &mut NTSTATUS {
     unsafe { &mut irp.IoStatus.__bindgen_anon_1.Status }
+}
+
+pub struct AutoHandle {
+    handle: HANDLE,
+}
+
+impl Drop for AutoHandle {
+    fn drop(&mut self) {
+        unsafe { ZwClose(self.handle) };
+    }
 }
