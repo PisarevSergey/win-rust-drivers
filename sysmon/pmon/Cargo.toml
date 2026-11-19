@@ -15,4 +15,4 @@ lto = true
 
 [dependencies]
 wchar = "0.11.1"
-win = { version = "0.1.0", path = "../win", features = ["ntddk"] }
+win = { version = "0.1.0", path = "../../win", features = ["ntddk"] }
