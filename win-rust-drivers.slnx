@@ -3,7 +3,7 @@
     <Platform Name="ARM64" />
     <Platform Name="x64" />
   </Configurations>
-  <Project Path="central/central.vcxproj">
+  <Project Path="sysmon/central/central.vcxproj" Id="04efd79b-a463-8d3f-6c02-00f174e107c8">
     <Deploy />
   </Project>
   <Project Path="create_pend/create_pend.vcxproj">
