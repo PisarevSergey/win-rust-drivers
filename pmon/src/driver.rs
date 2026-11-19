@@ -9,6 +9,7 @@ use core::option::Option;
 use core::result::Result;
 
 pub struct Driver {
+    central: Option<AutoHandle>,
     #[allow(dead_code)]
     proc_create_notify: Option<ProcessCreateNotify>,
 }
@@ -16,17 +17,24 @@ pub struct Driver {
 impl Driver {
     pub const fn new() -> Self {
         Driver {
+            central: None,
             proc_create_notify: None,
         }
     }
 
     pub fn try_create() -> Result<Self, NTSTATUS> {
+        let central = match open_central() {
+            Ok(central) => central,
+            Err(status) => return Err(status),
+        };
+
         let pn = match ProcessCreateNotify::try_create() {
             Ok(pn) => pn,
             Err(status) => return Err(status),
         };
 
         Ok(Self {
+            central: Some(central),
             proc_create_notify: Some(pn),
         })
     }
