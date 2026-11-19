@@ -1,7 +1,9 @@
 use crate::process_notify::ProcessCreateNotify;
 use win::{
-    AutoRefObject, DEVICE_OBJECT, FILE_WRITE_DATA, NTSTATUS, PDEVICE_OBJECT, PFILE_OBJECT, PVOID,
-    PWCH, STATUS_SUCCESS, UNICODE_STRING, kd_print_ln,
+    AutoHandle, FILE_NON_DIRECTORY_FILE, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
+    FILE_SYNCHRONOUS_IO_NONALERT, GENERIC_READ, GENERIC_WRITE, HANDLE, IO_STATUS_BLOCK, NTSTATUS,
+    OBJ_CASE_INSENSITIVE, OBJ_KERNEL_HANDLE, OBJECT_ATTRIBUTES, PWCH, STATUS_SUCCESS,
+    UNICODE_STRING, kd_print_ln,
 };
 
 use core::option::Option;
@@ -15,7 +17,7 @@ const CDO_NAME: UNICODE_STRING = UNICODE_STRING {
 };
 
 pub struct Driver {
-    central: Option<AutoRefObject<DEVICE_OBJECT>>,
+    central: Option<AutoHandle>,
     #[allow(dead_code)]
     proc_create_notify: Option<ProcessCreateNotify>,
 }
@@ -39,29 +41,34 @@ impl Driver {
     }
 }
 
-pub fn open_central() -> Result<AutoRefObject<DEVICE_OBJECT>, NTSTATUS> {
+pub fn open_central() -> Result<AutoHandle, NTSTATUS> {
     let mut cdo_name = CDO_NAME;
 
-    let mut fo = PFILE_OBJECT::default();
-    let mut dev_object = PDEVICE_OBJECT::default();
+    let mut oa = OBJECT_ATTRIBUTES::default();
+    oa.Length = core::mem::size_of_val(&oa) as u32;
+    oa.ObjectName = &raw mut cdo_name;
+    oa.Attributes = OBJ_CASE_INSENSITIVE | OBJ_KERNEL_HANDLE;
+
+    let mut iosb = IO_STATUS_BLOCK::default();
+    let mut central_handle = HANDLE::default();
     let status = unsafe {
-        win::IoGetDeviceObjectPointer(
-            &raw mut cdo_name,
-            FILE_WRITE_DATA,
-            &raw mut fo,
-            &raw mut dev_object,
+        win::ZwOpenFile(
+            &raw mut central_handle,
+            GENERIC_READ | GENERIC_WRITE,
+            &raw mut oa,
+            &raw mut iosb,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            FILE_SYNCHRONOUS_IO_NONALERT | FILE_NON_DIRECTORY_FILE,
         )
     };
     if status != STATUS_SUCCESS {
         kd_print_ln!(
-            "IoGetDeviceObjectPointer failed for %wZ with status 0x%x",
+            "open_central: ZwOpenFile failed for %wZ with status 0x%x",
             &raw const cdo_name,
             status
         );
         return Err(status);
     }
-    let _fo = unsafe { AutoRefObject::from_raw_ptr(fo) };
 
-    unsafe { win::ObfReferenceObject(dev_object as PVOID) };
-    Ok(unsafe { AutoRefObject::from_raw_ptr(dev_object) })
+    Ok(unsafe { AutoHandle::from_raw_handle(central_handle) })
 }
