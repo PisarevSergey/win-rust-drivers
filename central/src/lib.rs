@@ -9,8 +9,6 @@ use win::{
     DbgPrint, NTSTATUS, PCSTR, PDRIVER_OBJECT, PUNICODE_STRING, STATUS_SUCCESS, kd_print_ln,
 };
 
-pub use control_device::CDO_NAME;
-
 static mut DRIVER: driver::Driver = driver::Driver::new();
 
 #[unsafe(no_mangle)]
