@@ -46,27 +46,27 @@ unsafe extern "C" fn on_ioctl(_device_object: PDEVICE_OBJECT, irp: PIRP) -> NTST
     let current_sl = get_current_stack_location(irp);
     let code = unsafe { current_sl.Parameters.DeviceIoControl.IoControlCode };
 
-    kd_print_ln!("ioctl 0x%x for device %p", code, _device_object);
+    kd_print_ln!("central: ioctl 0x%x for device %p", code, _device_object);
 
     complete_irp_success(irp)
 }
 
 unsafe extern "C" fn on_create(_device_object: PDEVICE_OBJECT, irp: PIRP) -> NTSTATUS {
-    kd_print_ln!("create for device %p", _device_object);
+    kd_print_ln!("central: create for device %p", _device_object);
 
     let irp = unsafe { &mut *irp };
     complete_irp_success(irp)
 }
 
 unsafe extern "C" fn on_cleanup(_device_object: PDEVICE_OBJECT, irp: PIRP) -> NTSTATUS {
-    kd_print_ln!("cleanup for device %p", _device_object);
+    kd_print_ln!("central: cleanup for device %p", _device_object);
 
     let irp = unsafe { &mut *irp };
     complete_irp_success(irp)
 }
 
 unsafe extern "C" fn on_close(_device_object: PDEVICE_OBJECT, irp: PIRP) -> NTSTATUS {
-    kd_print_ln!("close for device %p", _device_object);
+    kd_print_ln!("central: close for device %p", _device_object);
 
     let irp = unsafe { &mut *irp };
     complete_irp_success(irp)
