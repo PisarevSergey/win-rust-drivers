@@ -1,15 +1,21 @@
 use crate::process_notify::ProcessCreateNotify;
 use win::{
-    AutoHandle, FILE_SHARE_READ, FILE_SHARE_WRITE, FILE_SYNCHRONOUS_IO_NONALERT, GENERIC_WRITE,
-    HANDLE, IO_STATUS_BLOCK, NTSTATUS, OBJECT_ATTRIBUTES, STATUS_SUCCESS, UNICODE_STRING,
-    kd_print_ln,
+    AutoRefObject, DEVICE_OBJECT, FILE_WRITE_DATA, NTSTATUS, PDEVICE_OBJECT, PFILE_OBJECT, PVOID,
+    PWCH, STATUS_SUCCESS, UNICODE_STRING, kd_print_ln,
 };
 
 use core::option::Option;
 use core::result::Result;
 
+const CDO_NAME_RAW: &[u16] = wchar::wchz!(r"\Device\central_cdo");
+const CDO_NAME: UNICODE_STRING = UNICODE_STRING {
+    Length: 2 * CDO_NAME_RAW.len() as u16,
+    MaximumLength: 2 * CDO_NAME_RAW.len() as u16,
+    Buffer: CDO_NAME_RAW.as_ptr() as PWCH,
+};
+
 pub struct Driver {
-    central: Option<AutoHandle>,
+    central: Option<AutoRefObject<DEVICE_OBJECT>>,
     #[allow(dead_code)]
     proc_create_notify: Option<ProcessCreateNotify>,
 }
@@ -33,37 +39,29 @@ impl Driver {
     }
 }
 
-pub fn open_central() -> Result<AutoHandle, NTSTATUS> {
-    let mut oa = OBJECT_ATTRIBUTES::default();
-    oa.Length = core::mem::size_of_val(&oa) as u32;
-    oa.Attributes = win::OBJ_KERNEL_HANDLE;
+pub fn open_central() -> Result<AutoRefObject<DEVICE_OBJECT>, NTSTATUS> {
+    let mut cdo_name = CDO_NAME;
 
-    const CDO_NAME_RAW: &[u16] = wchar::wchz!(r"\Device\central_cdo");
-
-    let mut cdo_name = UNICODE_STRING::default();
-    unsafe { win::RtlInitUnicodeString(&raw mut cdo_name, CDO_NAME_RAW.as_ptr()) };
-    oa.ObjectName = &raw mut cdo_name;
-
-    let mut iosb = IO_STATUS_BLOCK::default();
-    let mut central = HANDLE::default();
+    let mut fo = PFILE_OBJECT::default();
+    let mut dev_object = PDEVICE_OBJECT::default();
     let status = unsafe {
-        win::ZwOpenFile(
-            &raw mut central,
-            GENERIC_WRITE,
-            &raw mut oa,
-            &raw mut iosb,
-            FILE_SHARE_READ | FILE_SHARE_WRITE,
-            FILE_SYNCHRONOUS_IO_NONALERT,
+        win::IoGetDeviceObjectPointer(
+            &raw mut cdo_name,
+            FILE_WRITE_DATA,
+            &raw mut fo,
+            &raw mut dev_object,
         )
     };
     if status != STATUS_SUCCESS {
         kd_print_ln!(
-            "ZwOpenFile failed for %wZ with status 0x%x",
+            "IoGetDeviceObjectPointer failed for %wZ with status 0x%x",
             &raw const cdo_name,
             status
         );
         return Err(status);
     }
+    let _fo = unsafe { AutoRefObject::from_raw_ptr(fo) };
 
-    Ok(unsafe { AutoHandle::from_raw_handle(central) })
+    unsafe { win::ObfReferenceObject(dev_object as PVOID) };
+    Ok(unsafe { AutoRefObject::from_raw_ptr(dev_object) })
 }
