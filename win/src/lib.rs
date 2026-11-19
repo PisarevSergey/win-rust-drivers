@@ -18,6 +18,12 @@ mod ntddk;
 #[cfg(feature = "ntddk")]
 pub use ntddk::*;
 
+#[cfg(feature = "ntifs")]
+mod ntifs;
+
+#[cfg(feature = "ntifs")]
+pub use ntifs::*;
+
 #[cfg(feature = "fltkernel")]
 mod fltkernel;
 
@@ -128,5 +134,25 @@ impl AutoHandle {
 impl Drop for AutoHandle {
     fn drop(&mut self) {
         unsafe { ZwClose(self.handle) };
+    }
+}
+
+pub struct AutoRefObject<T> {
+    object: *mut T,
+}
+
+impl<T> AutoRefObject<T> {
+    pub unsafe fn from_raw_ptr(ptr: *mut T) -> Self {
+        Self { object: ptr }
+    }
+
+    pub unsafe fn get_raw_object(&self) -> *mut T {
+        self.object
+    }
+}
+
+impl<T> Drop for AutoRefObject<T> {
+    fn drop(&mut self) {
+        unsafe { ObfDereferenceObject(self.object as PVOID) };
     }
 }
