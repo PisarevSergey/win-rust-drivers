@@ -117,7 +117,6 @@ name = "pmon_lib"
 version = "0.1.0"
 dependencies = [
  "sysmon_common",
- "wchar",
  "win",
 ]
 
