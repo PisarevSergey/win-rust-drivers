@@ -119,6 +119,12 @@ pub struct AutoHandle {
     handle: HANDLE,
 }
 
+impl AutoHandle {
+    pub unsafe fn from_raw_handle(handle: HANDLE) -> Self {
+        Self { handle: handle }
+    }
+}
+
 impl Drop for AutoHandle {
     fn drop(&mut self) {
         unsafe { ZwClose(self.handle) };
