@@ -9,7 +9,7 @@
   <Project Path="create_pend/create_pend.vcxproj">
     <Deploy />
   </Project>
-  <Project Path="pmon/pmon.vcxproj">
+  <Project Path="sysmon/pmon/pmon.vcxproj" Id="72307454-af86-ec6f-2bc0-c8e4f31bb905">
     <Deploy />
   </Project>
 </Solution>
