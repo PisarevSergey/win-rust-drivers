@@ -23,15 +23,8 @@ impl Driver {
     }
 
     pub fn try_create() -> Result<Self, NTSTATUS> {
-        let central = match open_central() {
-            Ok(central) => central,
-            Err(status) => return Err(status),
-        };
-
-        let pn = match ProcessCreateNotify::try_create() {
-            Ok(pn) => pn,
-            Err(status) => return Err(status),
-        };
+        let central = open_central()?;
+        let pn = ProcessCreateNotify::try_create()?;
 
         Ok(Self {
             central: Some(central),
