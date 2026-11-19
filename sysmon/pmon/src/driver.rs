@@ -9,11 +9,12 @@ use win::{
 use core::option::Option;
 use core::result::Result;
 
-const CDO_NAME_RAW: &[u16] = wchar::wchz!(r"\Device\central_cdo");
+use sysmon_common::CENTRAL_CDO_NAME;
+
 const CDO_NAME: UNICODE_STRING = UNICODE_STRING {
-    Length: 2 * CDO_NAME_RAW.len() as u16,
-    MaximumLength: 2 * CDO_NAME_RAW.len() as u16,
-    Buffer: CDO_NAME_RAW.as_ptr() as PWCH,
+    Length: 2 * CENTRAL_CDO_NAME.len() as u16,
+    MaximumLength: 2 * CENTRAL_CDO_NAME.len() as u16,
+    Buffer: CENTRAL_CDO_NAME.as_ptr() as PWCH,
 };
 
 pub struct Driver {

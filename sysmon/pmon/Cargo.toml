@@ -14,5 +14,5 @@ panic = "abort"
 lto = true
 
 [dependencies]
-wchar = "0.11.1"
+sysmon_common = { version = "0.1.0", path = "../sysmon_common" }
 win = { version = "0.1.0", path = "../../win", features = ["ntddk"] }
