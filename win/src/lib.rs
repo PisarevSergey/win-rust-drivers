@@ -4,11 +4,25 @@
 #![allow(non_snake_case)]
 #![allow(suspicious_runtime_symbol_definitions)]
 
+use core::result::Result;
+
 #[cfg(feature = "wdm")]
 mod wdm;
 
+#[cfg(feature = "wdm")]
+pub use wdm::*;
+
 #[cfg(feature = "ntddk")]
 mod ntddk;
+
+#[cfg(feature = "ntddk")]
+pub use ntddk::*;
+
+#[cfg(feature = "ntifs")]
+mod ntifs;
+
+#[cfg(feature = "ntifs")]
+pub use ntifs::*;
 
 #[cfg(feature = "fltkernel")]
 mod fltkernel;
@@ -25,7 +39,7 @@ macro_rules! kd_print_ln
     ($fmt:expr $(, $arg:expr)*) => {
         let c_fmt = concat!($fmt, "\n\0");
         unsafe {
-            DbgPrint(c_fmt.as_ptr() as PCSTR $(, $arg)*);
+            crate::DbgPrint(c_fmt.as_ptr() as crate::PCSTR $(, $arg)*);
         }
     }
 }
@@ -56,7 +70,7 @@ pub fn create_device_secure(
     exclusive: bool,
     default_sddl: &UNICODE_STRING,
     device_class: core::option::Option<&GUID>,
-) -> core::result::Result<AutoDeleteDevice, NTSTATUS> {
+) -> Result<AutoDeleteDevice, NTSTATUS> {
     let mut cdo = PDEVICE_OBJECT::default();
     let device_name = match device_name {
         Some(device_name) => &raw mut *device_name,
@@ -105,4 +119,40 @@ pub fn get_current_stack_location(irp: &mut IRP) -> &mut IO_STACK_LOCATION {
 
 pub fn get_irp_status(irp: &mut IRP) -> &mut NTSTATUS {
     unsafe { &mut irp.IoStatus.__bindgen_anon_1.Status }
+}
+
+pub struct AutoHandle {
+    handle: HANDLE,
+}
+
+impl AutoHandle {
+    pub unsafe fn from_raw_handle(handle: HANDLE) -> Self {
+        Self { handle: handle }
+    }
+}
+
+impl Drop for AutoHandle {
+    fn drop(&mut self) {
+        unsafe { ZwClose(self.handle) };
+    }
+}
+
+pub struct AutoRefObject<T> {
+    object: *mut T,
+}
+
+impl<T> AutoRefObject<T> {
+    pub unsafe fn from_raw_ptr(ptr: *mut T) -> Self {
+        Self { object: ptr }
+    }
+
+    pub unsafe fn get_raw_object(&self) -> *mut T {
+        self.object
+    }
+}
+
+impl<T> Drop for AutoRefObject<T> {
+    fn drop(&mut self) {
+        unsafe { ObfDereferenceObject(self.object as PVOID) };
+    }
 }

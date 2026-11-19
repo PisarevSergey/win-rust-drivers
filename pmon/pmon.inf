@@ -1,0 +1,99 @@
+;
+; pmon.inf
+;
+[Version]
+Signature   = "$Windows NT$"
+Class=System
+ClassGuid={4d36e97d-e325-11ce-bfc1-08002be10318}
+Provider    = %ProviderString%
+DriverVer   =
+CatalogFile=pmon.cat
+PnpLockdown=1
+
+[SourceDisksFiles]
+pmon.sys = 1,,
+
+[SourceDisksNames]
+1 = %DiskId1%,,,
+
+[DestinationDirs]
+PmonDownlevel.CopyDriverFiles  = 12            ;%windir%\system32\drivers
+PmonDownlevel.DelDriverFiles   = 12            ;%windir%\system32\drivers
+Pmon.DriverFiles               = 13            ;driver store
+
+;;
+;; Default install sections
+;;
+
+[DefaultInstall.NT$ARCH$.10.0...25952]
+OptionDesc          = %ServiceDescription%
+CopyFiles           = Pmon.DriverFiles
+
+[DefaultInstall.NT$ARCH$.10.0...25952.Services]
+AddService          = %ServiceName%,,Pmon.Service
+
+;
+; Support sections
+;
+
+[Pmon.Service]
+DisplayName      = %ServiceName%
+Description      = %ServiceDescription%
+ServiceBinary    = %13%\%DriverName%.sys
+ServiceType      = 1                            ;SERVICE_KERNEL_DRIVER
+StartType        = 2                            ;SERVICE_AUTO_START
+ErrorControl     = 1                            ;SERVICE_ERROR_NORMAL
+
+[Pmon.DriverFiles]
+%DriverName%.sys
+
+;;
+;; Downlevel default install sections
+;;
+
+[DefaultInstall.NT$ARCH$]
+OptionDesc          = %ServiceDescription%
+CopyFiles           = PmonDownlevel.CopyDriverFiles
+
+[DefaultInstall.NT$ARCH$.Services]
+AddService          = %ServiceName%,,PmonDownlevel.Service
+
+;;
+;; Downlevel default uninstall sections
+;;
+
+[DefaultUninstall.NT$ARCH$]
+LegacyUninstall = 1
+DelFiles        = PmonDownlevel.DelDriverFiles
+
+[DefaultUninstall.NT$ARCH$.Services]
+DelService      = %ServiceName%,0x200      ;Ensure service is stopped before deleting
+
+;
+; Downlevel support sections
+;
+
+[PmonDownlevel.Service]
+DisplayName      = %ServiceName%
+Description      = %ServiceDescription%
+ServiceBinary    = %12%\%DriverName%.sys        ;%windir%\system32\drivers\
+ServiceType      = 1                            ;SERVICE_KERNEL_DRIVER
+StartType        = 2                            ;SERVICE_AUTO_START
+ErrorControl     = 1                            ;SERVICE_ERROR_NORMAL
+
+[PmonDownlevel.CopyDriverFiles]
+%DriverName%.sys
+
+[PmonDownlevel.DelDriverFiles]
+%DriverName%.sys
+
+;;
+;; String Section
+;;
+
+[Strings]
+ProviderString          = "ps"
+ServiceDescription      = "Process Start Monitor Driver"
+ServiceName             = "pmon"
+DriverName              = "pmon"
+DiskId1                 = "pmon Device Installation Disk"
