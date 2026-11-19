@@ -54,7 +54,7 @@ pub fn open_central() -> Result<AutoHandle, NTSTATUS> {
     let status = unsafe {
         win::ZwOpenFile(
             &raw mut central_handle,
-            GENERIC_READ | GENERIC_WRITE,
+            GENERIC_WRITE,
             &raw mut oa,
             &raw mut iosb,
             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
