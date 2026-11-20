@@ -156,3 +156,34 @@ impl<T> Drop for AutoRefObject<T> {
         unsafe { ObfDereferenceObject(self.object as PVOID) };
     }
 }
+
+#[cfg(any(feature = "ntddk", feature = "ntifs", feature = "fltkernel"))]
+pub fn ioctl(
+    handle: &AutoHandle,
+    code: ULONG,
+    input: PVOID,
+    input_size: ULONG,
+    output: PVOID,
+    output_size: ULONG,
+) -> Result<ULONG_PTR, NTSTATUS> {
+    let mut iosb = IO_STATUS_BLOCK::default();
+    let status = unsafe {
+        ZwDeviceIoControlFile(
+            handle.handle,
+            core::ptr::null_mut(),
+            None,
+            core::ptr::null_mut(),
+            &raw mut iosb,
+            code,
+            input,
+            input_size,
+            output,
+            output_size,
+        )
+    };
+    if status != STATUS_SUCCESS {
+        return Err(status);
+    }
+
+    Ok(iosb.Information)
+}
