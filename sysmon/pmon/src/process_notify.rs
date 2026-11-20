@@ -1,7 +1,9 @@
 use win::{
-    FALSE, HANDLE, NTSTATUS, PEPROCESS, PPS_CREATE_NOTIFY_INFO, PsSetCreateProcessNotifyRoutineEx,
-    STATUS_SUCCESS, TRUE, kd_print_ln,
+    kd_print_ln, PsSetCreateProcessNotifyRoutineEx, FALSE, HANDLE, NTSTATUS, PEPROCESS,
+    PPS_CREATE_NOTIFY_INFO, STATUS_SUCCESS, TRUE,
 };
+
+use sysmon_common::ProcessNotify;
 
 pub struct ProcessCreateNotify {}
 
@@ -34,13 +36,19 @@ impl Drop for ProcessCreateNotify {
 }
 
 unsafe extern "C" fn process_notify(
-    _process: PEPROCESS,
-    _pid: HANDLE,
-    _create_info: PPS_CREATE_NOTIFY_INFO,
+    process: PEPROCESS,
+    pid: HANDLE,
+    create_info: PPS_CREATE_NOTIFY_INFO,
 ) {
+    let pn = ProcessNotify {
+        eprocess: process as u64,
+        pid: pid as u64,
+        ps_create_notify_info: create_info as u64,
+    };
+
     kd_print_ln!(
-        "process_notify: pid - %p; create info - %p",
-        _pid,
-        _create_info
+        "process_notify: pid - 0x%llx; create info - 0x%llx",
+        pn.pid,
+        pn.ps_create_notify_info
     );
 }
