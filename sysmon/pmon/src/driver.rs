@@ -1,15 +1,25 @@
 use crate::process_notify::ProcessCreateNotify;
 use win::{
-    AutoHandle, FILE_NON_DIRECTORY_FILE, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
-    FILE_SYNCHRONOUS_IO_NONALERT, GENERIC_WRITE, HANDLE, IO_STATUS_BLOCK, NTSTATUS,
-    OBJ_CASE_INSENSITIVE, OBJ_KERNEL_HANDLE, OBJECT_ATTRIBUTES, PWCH, STATUS_SUCCESS,
-    UNICODE_STRING, kd_print_ln,
+    kd_print_ln, AutoHandle, FILE_NON_DIRECTORY_FILE, FILE_SHARE_DELETE, FILE_SHARE_READ,
+    FILE_SHARE_WRITE, FILE_SYNCHRONOUS_IO_NONALERT, GENERIC_WRITE, HANDLE, IO_STATUS_BLOCK,
+    NTSTATUS, OBJECT_ATTRIBUTES, OBJ_CASE_INSENSITIVE, OBJ_KERNEL_HANDLE, PWCH, STATUS_SUCCESS,
+    UNICODE_STRING,
 };
 
 use core::option::Option;
 use core::result::Result;
 
 use sysmon_common::CENTRAL_CDO_NAME;
+
+static mut DRIVER: Driver = Driver::new();
+
+pub fn get_driver() -> &'static mut Driver {
+    unsafe { &mut *&raw mut DRIVER }
+}
+
+pub fn destroy_driver() {
+    unsafe { core::ptr::drop_in_place(&raw mut DRIVER) };
+}
 
 const CDO_NAME: UNICODE_STRING = UNICODE_STRING {
     Length: 2 * CENTRAL_CDO_NAME.len() as u16,
@@ -31,14 +41,11 @@ impl Driver {
         }
     }
 
-    pub fn try_create() -> Result<Self, NTSTATUS> {
-        let central = open_central()?;
-        let pn = ProcessCreateNotify::try_create()?;
+    pub fn init(&mut self) -> Result<NTSTATUS, NTSTATUS> {
+        self.central = Some(open_central()?);
+        self.proc_create_notify = Some(ProcessCreateNotify::try_create()?);
 
-        Ok(Self {
-            central: Some(central),
-            proc_create_notify: Some(pn),
-        })
+        Ok(STATUS_SUCCESS)
     }
 }
 
