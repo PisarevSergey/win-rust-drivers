@@ -18,6 +18,7 @@ extern "system" fn DriverEntry(driver: PDRIVER_OBJECT, reg_path: PUNICODE_STRING
 
     if let Err(status) = driver::get_driver().init() {
         kd_print_ln!("driver init failed with status 0x%x", status);
+        driver::destroy_driver();
         return status;
     };
 
