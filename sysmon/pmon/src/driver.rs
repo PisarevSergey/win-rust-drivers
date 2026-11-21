@@ -1,16 +1,16 @@
 use crate::process_notify::ProcessCreateNotify;
 use win::{
-    kd_print_ln, AutoHandle, FILE_NON_DIRECTORY_FILE, FILE_SHARE_DELETE, FILE_SHARE_READ,
-    FILE_SHARE_WRITE, FILE_SYNCHRONOUS_IO_NONALERT, GENERIC_WRITE, HANDLE, IO_STATUS_BLOCK,
-    NTSTATUS, OBJECT_ATTRIBUTES, OBJ_CASE_INSENSITIVE, OBJ_KERNEL_HANDLE, PVOID, PWCH,
-    STATUS_SUCCESS, ULONG, UNICODE_STRING,
+    AutoHandle, FILE_NON_DIRECTORY_FILE, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
+    FILE_SYNCHRONOUS_IO_NONALERT, GENERIC_WRITE, HANDLE, IO_STATUS_BLOCK, NTSTATUS,
+    OBJ_CASE_INSENSITIVE, OBJ_KERNEL_HANDLE, OBJECT_ATTRIBUTES, PVOID, STATUS_SUCCESS, ULONG,
+    UNICODE_STRING, kd_print_ln,
 };
 
 use core::mem;
 use core::option::Option;
 use core::result::Result;
 
-use sysmon_common::{ProcessNotify, CENTRAL_CDO_NAME};
+use sysmon_common::{CENTRAL_CDO_NAME, IOCTL_CENTRAL_PROCESS_START_STOP_NOTIFY, ProcessNotify};
 
 static mut DRIVER: Driver = Driver::new();
 
@@ -22,11 +22,7 @@ pub fn destroy_driver() {
     unsafe { core::ptr::drop_in_place(&raw mut DRIVER) };
 }
 
-const CDO_NAME: UNICODE_STRING = UNICODE_STRING {
-    Length: 2 * CENTRAL_CDO_NAME.len() as u16,
-    MaximumLength: 2 * CENTRAL_CDO_NAME.len() as u16,
-    Buffer: CENTRAL_CDO_NAME.as_ptr() as PWCH,
-};
+const CDO_NAME: UNICODE_STRING = win::to_unicode_string(CENTRAL_CDO_NAME);
 
 pub struct Driver {
     central: Option<AutoHandle>,
@@ -57,7 +53,7 @@ impl Driver {
 
         if let Err(status) = win::ioctl(
             central,
-            1, // TODO ioctl code
+            IOCTL_CENTRAL_PROCESS_START_STOP_NOTIFY,
             &raw const *pn as PVOID,
             mem::size_of_val(pn) as ULONG,
             win::PVOID::default(),
