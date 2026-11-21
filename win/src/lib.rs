@@ -108,7 +108,18 @@ pub fn create_device_secure(
     Ok(AutoDeleteDevice { device: cdo })
 }
 
-pub fn get_current_stack_location(irp: &mut IRP) -> &mut IO_STACK_LOCATION {
+pub fn get_current_stack_location(irp: &IRP) -> &IO_STACK_LOCATION {
+    unsafe {
+        &*irp
+            .Tail
+            .Overlay
+            .__bindgen_anon_2
+            .__bindgen_anon_1
+            .CurrentStackLocation
+    }
+}
+
+pub fn get_current_stack_location_mut(irp: &mut IRP) -> &mut IO_STACK_LOCATION {
     unsafe {
         &mut *irp
             .Tail
