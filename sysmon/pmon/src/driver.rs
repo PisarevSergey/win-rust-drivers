@@ -2,14 +2,15 @@ use crate::process_notify::ProcessCreateNotify;
 use win::{
     kd_print_ln, AutoHandle, FILE_NON_DIRECTORY_FILE, FILE_SHARE_DELETE, FILE_SHARE_READ,
     FILE_SHARE_WRITE, FILE_SYNCHRONOUS_IO_NONALERT, GENERIC_WRITE, HANDLE, IO_STATUS_BLOCK,
-    NTSTATUS, OBJECT_ATTRIBUTES, OBJ_CASE_INSENSITIVE, OBJ_KERNEL_HANDLE, PWCH, STATUS_SUCCESS,
-    UNICODE_STRING,
+    NTSTATUS, OBJECT_ATTRIBUTES, OBJ_CASE_INSENSITIVE, OBJ_KERNEL_HANDLE, PVOID, PWCH,
+    STATUS_SUCCESS, ULONG, UNICODE_STRING,
 };
 
+use core::mem;
 use core::option::Option;
 use core::result::Result;
 
-use sysmon_common::CENTRAL_CDO_NAME;
+use sysmon_common::{ProcessNotify, CENTRAL_CDO_NAME};
 
 static mut DRIVER: Driver = Driver::new();
 
@@ -46,6 +47,22 @@ impl Driver {
         self.proc_create_notify = Some(ProcessCreateNotify::try_create()?);
 
         Ok(STATUS_SUCCESS)
+    }
+
+    pub fn send_process_event_to_central(&self, pn: &mut ProcessNotify) {
+        let Some(central) = &self.central else {
+            kd_print_ln!("pmon: no central handle");
+            return;
+        };
+
+        win::ioctl(
+            central,
+            1, // TODO ioctl code
+            &raw mut *pn as PVOID,
+            mem::size_of_val(pn) as ULONG,
+            win::PVOID::default(),
+            0,
+        );
     }
 }
 

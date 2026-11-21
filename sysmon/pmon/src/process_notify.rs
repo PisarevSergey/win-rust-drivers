@@ -3,6 +3,8 @@ use win::{
     PPS_CREATE_NOTIFY_INFO, STATUS_SUCCESS, TRUE,
 };
 
+use crate::driver;
+
 use sysmon_common::ProcessNotify;
 
 pub struct ProcessCreateNotify {}
@@ -40,7 +42,7 @@ unsafe extern "C" fn process_notify(
     pid: HANDLE,
     create_info: PPS_CREATE_NOTIFY_INFO,
 ) {
-    let pn = ProcessNotify {
+    let mut pn = ProcessNotify {
         eprocess: process as u64,
         pid: pid as u64,
         ps_create_notify_info: create_info as u64,
@@ -51,4 +53,6 @@ unsafe extern "C" fn process_notify(
         pn.pid,
         pn.ps_create_notify_info
     );
+
+    driver::get_driver().send_process_event_tdo_central(&mut pn);
 }
