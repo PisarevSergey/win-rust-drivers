@@ -49,7 +49,7 @@ impl Driver {
         Ok(STATUS_SUCCESS)
     }
 
-    pub fn send_process_event_to_central(&self, pn: &mut ProcessNotify) {
+    pub fn send_process_event_to_central(&self, pn: &ProcessNotify) {
         let Some(central) = &self.central else {
             kd_print_ln!("pmon: no central handle");
             return;
@@ -58,7 +58,7 @@ impl Driver {
         win::ioctl(
             central,
             1, // TODO ioctl code
-            &raw mut *pn as PVOID,
+            &raw const *pn as PVOID,
             mem::size_of_val(pn) as ULONG,
             win::PVOID::default(),
             0,
