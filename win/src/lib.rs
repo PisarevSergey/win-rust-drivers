@@ -4,6 +4,8 @@
 #![allow(non_snake_case)]
 #![allow(suspicious_runtime_symbol_definitions)]
 
+use core::option::Option;
+use core::ptr;
 use core::result::Result;
 
 #[cfg(feature = "wdm")]
@@ -64,22 +66,22 @@ impl Drop for AutoDeleteDevice {
 pub fn create_device_secure(
     driver_object: &mut DRIVER_OBJECT,
     device_extension_size: ULONG,
-    device_name: core::option::Option<&mut UNICODE_STRING>,
+    device_name: Option<&mut UNICODE_STRING>,
     device_type: ULONG,
     device_characteristics: ULONG,
     exclusive: bool,
     default_sddl: &UNICODE_STRING,
-    device_class: core::option::Option<&GUID>,
+    device_class: Option<&GUID>,
 ) -> Result<AutoDeleteDevice, NTSTATUS> {
     let mut cdo = PDEVICE_OBJECT::default();
     let device_name = match device_name {
         Some(device_name) => &raw mut *device_name,
-        None => core::ptr::null_mut(),
+        None => ptr::null_mut(),
     };
 
     let device_class = match device_class {
         Some(device_class) => &raw const *device_class,
-        None => core::ptr::null(),
+        None => ptr::null(),
     };
 
     let status = unsafe {
@@ -170,9 +172,9 @@ pub fn ioctl(
     let status = unsafe {
         ZwDeviceIoControlFile(
             handle.handle,
-            core::ptr::null_mut(),
+            ptr::null_mut(),
             None,
-            core::ptr::null_mut(),
+            ptr::null_mut(),
             &raw mut iosb,
             code,
             input,
@@ -186,4 +188,29 @@ pub fn ioctl(
     }
 
     Ok(iosb.Information)
+}
+
+pub const fn to_unicode_string(s: &[u16]) -> UNICODE_STRING {
+    let mut us = UNICODE_STRING {
+        Length: 0,
+        MaximumLength: 0,
+        Buffer: ptr::null_mut(),
+    };
+
+    let Some(last_element) = s.last() else {
+        return us;
+    };
+
+    let size = if *last_element == 0 {
+        s.len() - 1
+    } else {
+        s.len()
+    };
+    let size = 2 * size as u16;
+
+    us.Length = size;
+    us.MaximumLength = size;
+    us.Buffer = s.as_ptr() as *mut u16;
+
+    us
 }
