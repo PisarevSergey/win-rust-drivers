@@ -25,9 +25,9 @@ pub fn destroy_driver() {
 const CDO_NAME: UNICODE_STRING = win::to_unicode_string(CENTRAL_CDO_NAME);
 
 pub struct Driver {
-    central: Option<AutoHandle>,
     #[allow(dead_code)]
     proc_create_notify: Option<ProcessCreateNotify>,
+    central: Option<AutoHandle>,
 }
 
 impl Driver {
