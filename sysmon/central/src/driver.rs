@@ -1,8 +1,11 @@
 use win::{
-    AutoDeleteDevice, DRIVER_OBJECT, IO_NO_INCREMENT, IRP, IRP_MJ_CLEANUP, IRP_MJ_CLOSE,
-    IRP_MJ_CREATE, IRP_MJ_DEVICE_CONTROL, IofCompleteRequest, NTSTATUS, PDEVICE_OBJECT, PIRP,
-    STATUS_SUCCESS, ULONG_PTR, get_current_stack_location, get_irp_status, kd_print_ln,
+    _MODE_KernelMode as KernelMode, AutoDeleteDevice, DRIVER_OBJECT, IO_NO_INCREMENT, IRP,
+    IRP_MJ_CLEANUP, IRP_MJ_CLOSE, IRP_MJ_CREATE, IRP_MJ_DEVICE_CONTROL, IofCompleteRequest,
+    NTSTATUS, PDEVICE_OBJECT, PIRP, STATUS_SUCCESS, ULONG_PTR, get_current_stack_location,
+    get_irp_status, kd_print_ln,
 };
+
+use sysmon_common::IOCTL_CENTRAL_PROCESS_START_STOP_NOTIFY;
 
 use crate::control_device::{SymLink, try_create_device};
 
@@ -10,9 +13,9 @@ use core::option::Option;
 
 pub struct Driver {
     #[allow(dead_code)]
-    cdo: Option<AutoDeleteDevice>,
-    #[allow(dead_code)]
     symlink: Option<SymLink>,
+    #[allow(dead_code)]
+    cdo: Option<AutoDeleteDevice>,
 }
 
 impl Driver {
@@ -47,6 +50,12 @@ unsafe extern "C" fn on_ioctl(_device_object: PDEVICE_OBJECT, irp: PIRP) -> NTST
     let code = unsafe { current_sl.Parameters.DeviceIoControl.IoControlCode };
 
     kd_print_ln!("central: ioctl 0x%x for device %p", code, _device_object);
+
+    if code == IOCTL_CENTRAL_PROCESS_START_STOP_NOTIFY {
+        if irp.RequestorMode == KernelMode as i8 {
+            dispatch_process_event(irp);
+        }
+    }
 
     complete_irp_success(irp)
 }
@@ -83,4 +92,17 @@ fn complete_irp_with_params(irp: &mut IRP, status: NTSTATUS, info: ULONG_PTR) ->
     unsafe { IofCompleteRequest(irp, IO_NO_INCREMENT as i8) };
 
     status
+}
+
+fn dispatch_process_event(irp: &IRP) {
+    let process_event = unsafe { irp.AssociatedIrp.SystemBuffer };
+    let process_event = process_event as *const sysmon_common::ProcessNotify;
+    let process_event = unsafe { &*process_event };
+
+    kd_print_ln!(
+        "central: process event: pid - %llx; eprocess - %llx; process notify info - %llx",
+        process_event.pid,
+        process_event.eprocess,
+        process_event.ps_create_notify_info
+    );
 }
