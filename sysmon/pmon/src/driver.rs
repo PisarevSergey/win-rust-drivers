@@ -55,14 +55,19 @@ impl Driver {
             return;
         };
 
-        win::ioctl(
+        if let Err(status) = win::ioctl(
             central,
             1, // TODO ioctl code
             &raw const *pn as PVOID,
             mem::size_of_val(pn) as ULONG,
             win::PVOID::default(),
             0,
-        );
+        ) {
+            kd_print_ln!(
+                "pmon: failed to send process event to central with status 0x%x",
+                status
+            );
+        };
     }
 }
 
