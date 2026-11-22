@@ -1,8 +1,8 @@
 use win::{
     _MODE_KernelMode as KernelMode, AutoDeleteDevice, DRIVER_OBJECT, IO_NO_INCREMENT, IRP,
     IRP_MJ_CLEANUP, IRP_MJ_CLOSE, IRP_MJ_CREATE, IRP_MJ_DEVICE_CONTROL, IofCompleteRequest,
-    NTSTATUS, PDEVICE_OBJECT, PIRP, STATUS_SUCCESS, ULONG_PTR, get_current_stack_location,
-    get_irp_status, kd_print_ln,
+    NTSTATUS, PDEVICE_OBJECT, PIRP, PS_CREATE_NOTIFY_INFO, STATUS_SUCCESS, ULONG_PTR,
+    get_current_stack_location, get_irp_status, kd_print_ln,
 };
 
 use sysmon_common::IOCTL_CENTRAL_PROCESS_START_STOP_NOTIFY;
@@ -99,10 +99,33 @@ fn dispatch_process_event(irp: &IRP) {
     let process_event = process_event as *const sysmon_common::ProcessNotify;
     let process_event = unsafe { &*process_event };
 
+    kd_print_ln!("central: process event: pid - 0x%llx", process_event.pid);
+
+    let notify = process_event.ps_create_notify_info as *const PS_CREATE_NOTIFY_INFO;
+    if notify.is_null() {
+        kd_print_ln!("central: process exit");
+    } else {
+        kd_print_ln!("central: process start");
+        let notify = unsafe { &*notify };
+        trace_process_notify_info(notify);
+    }
+}
+
+fn trace_process_notify_info(info: &PS_CREATE_NOTIFY_INFO) {
     kd_print_ln!(
-        "central: process event: pid - %llx; eprocess - %llx; process notify info - %llx",
-        process_event.pid,
-        process_event.eprocess,
-        process_event.ps_create_notify_info
+        "central: parent PID: %p; creating PID: %p; creating TID: %p",
+        info.ParentProcessId,
+        info.CreatingThreadId.UniqueProcess,
+        info.CreatingThreadId.UniqueThread
     );
+
+    let img = info.ImageFileName;
+    if !img.is_null() {
+        kd_print_ln!("central: process image - %wZ", img);
+    }
+
+    let cmd = info.CommandLine;
+    if !cmd.is_null() {
+        kd_print_ln!("central: cmd line - %wZ", cmd);
+    }
 }
