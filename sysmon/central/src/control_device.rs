@@ -1,6 +1,6 @@
 use win::{
-    create_device_secure, kd_print_ln, AutoDeleteDevice, IoCreateSymbolicLink, DRIVER_OBJECT, GUID,
-    NTSTATUS, PWCH, STATUS_SUCCESS, UNICODE_STRING,
+    AutoDeleteDevice, DRIVER_OBJECT, GUID, IoCreateSymbolicLink, NTSTATUS, STATUS_SUCCESS,
+    create_device_secure, kd_print_ln,
 };
 
 use sysmon_common::{CENTRAL_CDO_NAME, CENTRAL_DOS_NAME};
@@ -12,22 +12,10 @@ const CDO_CLASS: GUID = GUID {
     Data4: [0xa7, 0x65, 00, 0xa0, 0xc9, 0x1e, 0x6b, 0xf6],
 };
 
-const CDO_NAME: UNICODE_STRING = UNICODE_STRING {
-    Length: 2 * CENTRAL_CDO_NAME.len() as u16,
-    MaximumLength: 2 * CENTRAL_CDO_NAME.len() as u16,
-    Buffer: CENTRAL_CDO_NAME.as_ptr() as PWCH,
-};
-
-const DOS_NAME: UNICODE_STRING = UNICODE_STRING {
-    Length: 2 * CENTRAL_DOS_NAME.len() as u16,
-    MaximumLength: 2 * CENTRAL_DOS_NAME.len() as u16,
-    Buffer: CENTRAL_DOS_NAME.as_ptr() as PWCH,
-};
-
 pub fn try_create_device(
     driver_object: &mut DRIVER_OBJECT,
 ) -> core::result::Result<AutoDeleteDevice, NTSTATUS> {
-    let mut cdo_name = CDO_NAME;
+    let mut cdo_name = win::to_unicode_string(CENTRAL_CDO_NAME);
     create_device_secure(
         driver_object,
         0,
@@ -44,10 +32,10 @@ pub struct SymLink;
 
 impl SymLink {
     pub fn try_create() -> core::result::Result<Self, NTSTATUS> {
-        let mut dos_name = DOS_NAME;
+        let mut dos_name = win::to_unicode_string(CENTRAL_DOS_NAME);
         let link = &raw mut dos_name;
 
-        let mut cdo_name = CDO_NAME;
+        let mut cdo_name = win::to_unicode_string(CENTRAL_CDO_NAME);
         let name = &raw mut cdo_name;
 
         let status = unsafe { IoCreateSymbolicLink(link, name) };
@@ -69,7 +57,7 @@ impl SymLink {
 
 impl Drop for SymLink {
     fn drop(&mut self) {
-        let mut dos_name = DOS_NAME;
+        let mut dos_name = win::to_unicode_string(CENTRAL_DOS_NAME);
         let link = &raw mut dos_name;
         kd_print_ln!("IoDeleteSymbolicLink %wZ", link);
         unsafe { win::IoDeleteSymbolicLink(link) };

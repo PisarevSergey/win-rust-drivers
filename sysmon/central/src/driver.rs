@@ -1,8 +1,11 @@
 use win::{
-    AutoDeleteDevice, DRIVER_OBJECT, IO_NO_INCREMENT, IRP, IRP_MJ_CLEANUP, IRP_MJ_CLOSE,
-    IRP_MJ_CREATE, IRP_MJ_DEVICE_CONTROL, IofCompleteRequest, NTSTATUS, PDEVICE_OBJECT, PIRP,
-    STATUS_SUCCESS, ULONG_PTR, get_current_stack_location, get_irp_status, kd_print_ln,
+    _MODE_KernelMode as KernelMode, AutoDeleteDevice, DRIVER_OBJECT, IO_NO_INCREMENT, IRP,
+    IRP_MJ_CLEANUP, IRP_MJ_CLOSE, IRP_MJ_CREATE, IRP_MJ_DEVICE_CONTROL, IofCompleteRequest,
+    NTSTATUS, PDEVICE_OBJECT, PIRP, STATUS_SUCCESS, ULONG_PTR, UNICODE_STRING,
+    get_current_stack_location, get_irp_status, kd_print_ln,
 };
+
+use sysmon_common::{IOCTL_CENTRAL_PROCESS_START_STOP_NOTIFY, ProcessEventType};
 
 use crate::control_device::{SymLink, try_create_device};
 
@@ -10,9 +13,9 @@ use core::option::Option;
 
 pub struct Driver {
     #[allow(dead_code)]
-    cdo: Option<AutoDeleteDevice>,
-    #[allow(dead_code)]
     symlink: Option<SymLink>,
+    #[allow(dead_code)]
+    cdo: Option<AutoDeleteDevice>,
 }
 
 impl Driver {
@@ -47,6 +50,12 @@ unsafe extern "C" fn on_ioctl(_device_object: PDEVICE_OBJECT, irp: PIRP) -> NTST
     let code = unsafe { current_sl.Parameters.DeviceIoControl.IoControlCode };
 
     kd_print_ln!("central: ioctl 0x%x for device %p", code, _device_object);
+
+    if code == IOCTL_CENTRAL_PROCESS_START_STOP_NOTIFY {
+        if irp.RequestorMode == KernelMode as i8 {
+            dispatch_process_event(irp);
+        }
+    }
 
     complete_irp_success(irp)
 }
@@ -83,4 +92,34 @@ fn complete_irp_with_params(irp: &mut IRP, status: NTSTATUS, info: ULONG_PTR) ->
     unsafe { IofCompleteRequest(irp, IO_NO_INCREMENT as i8) };
 
     status
+}
+
+fn dispatch_process_event(irp: &IRP) {
+    let process_event = unsafe { irp.AssociatedIrp.SystemBuffer };
+    let process_event = process_event as *const sysmon_common::ProcessNotify;
+    let process_event = unsafe { &*process_event };
+
+    let ProcessEventType::Start(start_info) = process_event.event else {
+        kd_print_ln!("central: process exit: pid - 0x%llx", process_event.pid);
+        return;
+    };
+
+    let image_path = if let Some(image_path) = start_info.image_path {
+        win::to_unicode_string(image_path)
+    } else {
+        UNICODE_STRING::default()
+    };
+    let command_line = if let Some(command_line) = start_info.command_line {
+        win::to_unicode_string(command_line)
+    } else {
+        UNICODE_STRING::default()
+    };
+
+    kd_print_ln!(
+        "central: process start: pid - %p; ppid - %p; image path - %wZ; command_line - %wZ",
+        process_event.pid,
+        start_info.ppid,
+        &raw const image_path,
+        &raw const command_line
+    );
 }

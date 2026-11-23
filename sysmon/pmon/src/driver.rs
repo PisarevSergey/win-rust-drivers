@@ -2,25 +2,32 @@ use crate::process_notify::ProcessCreateNotify;
 use win::{
     AutoHandle, FILE_NON_DIRECTORY_FILE, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
     FILE_SYNCHRONOUS_IO_NONALERT, GENERIC_WRITE, HANDLE, IO_STATUS_BLOCK, NTSTATUS,
-    OBJ_CASE_INSENSITIVE, OBJ_KERNEL_HANDLE, OBJECT_ATTRIBUTES, PWCH, STATUS_SUCCESS,
+    OBJ_CASE_INSENSITIVE, OBJ_KERNEL_HANDLE, OBJECT_ATTRIBUTES, PVOID, STATUS_SUCCESS, ULONG,
     UNICODE_STRING, kd_print_ln,
 };
 
+use core::mem;
 use core::option::Option;
 use core::result::Result;
 
-use sysmon_common::CENTRAL_CDO_NAME;
+use sysmon_common::{CENTRAL_CDO_NAME, IOCTL_CENTRAL_PROCESS_START_STOP_NOTIFY, ProcessNotify};
 
-const CDO_NAME: UNICODE_STRING = UNICODE_STRING {
-    Length: 2 * CENTRAL_CDO_NAME.len() as u16,
-    MaximumLength: 2 * CENTRAL_CDO_NAME.len() as u16,
-    Buffer: CENTRAL_CDO_NAME.as_ptr() as PWCH,
-};
+static mut DRIVER: Driver = Driver::new();
+
+pub fn get_driver() -> &'static mut Driver {
+    unsafe { &mut *&raw mut DRIVER }
+}
+
+pub fn destroy_driver() {
+    unsafe { core::ptr::drop_in_place(&raw mut DRIVER) };
+}
+
+const CDO_NAME: UNICODE_STRING = win::to_unicode_string(CENTRAL_CDO_NAME);
 
 pub struct Driver {
-    central: Option<AutoHandle>,
     #[allow(dead_code)]
     proc_create_notify: Option<ProcessCreateNotify>,
+    central: Option<AutoHandle>,
 }
 
 impl Driver {
@@ -31,14 +38,32 @@ impl Driver {
         }
     }
 
-    pub fn try_create() -> Result<Self, NTSTATUS> {
-        let central = open_central()?;
-        let pn = ProcessCreateNotify::try_create()?;
+    pub fn init(&mut self) -> Result<NTSTATUS, NTSTATUS> {
+        self.central = Some(open_central()?);
+        self.proc_create_notify = Some(ProcessCreateNotify::try_create()?);
 
-        Ok(Self {
-            central: Some(central),
-            proc_create_notify: Some(pn),
-        })
+        Ok(STATUS_SUCCESS)
+    }
+
+    pub fn send_process_event_to_central(&self, pn: &ProcessNotify) {
+        let Some(central) = &self.central else {
+            kd_print_ln!("pmon: no central handle");
+            return;
+        };
+
+        if let Err(status) = win::ioctl(
+            central,
+            IOCTL_CENTRAL_PROCESS_START_STOP_NOTIFY,
+            &raw const *pn as PVOID,
+            mem::size_of_val(pn) as ULONG,
+            win::PVOID::default(),
+            0,
+        ) {
+            kd_print_ln!(
+                "pmon: failed to send process event to central with status 0x%x",
+                status
+            );
+        };
     }
 }
 
