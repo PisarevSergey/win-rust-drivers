@@ -1,11 +1,11 @@
 use win::{
     _MODE_KernelMode as KernelMode, AutoDeleteDevice, DRIVER_OBJECT, IO_NO_INCREMENT, IRP,
     IRP_MJ_CLEANUP, IRP_MJ_CLOSE, IRP_MJ_CREATE, IRP_MJ_DEVICE_CONTROL, IofCompleteRequest,
-    NTSTATUS, PDEVICE_OBJECT, PIRP, PS_CREATE_NOTIFY_INFO, STATUS_SUCCESS, ULONG_PTR,
+    NTSTATUS, PDEVICE_OBJECT, PIRP, STATUS_SUCCESS, ULONG_PTR, UNICODE_STRING,
     get_current_stack_location, get_irp_status, kd_print_ln,
 };
 
-use sysmon_common::IOCTL_CENTRAL_PROCESS_START_STOP_NOTIFY;
+use sysmon_common::{IOCTL_CENTRAL_PROCESS_START_STOP_NOTIFY, ProcessEventType};
 
 use crate::control_device::{SymLink, try_create_device};
 
@@ -99,33 +99,27 @@ fn dispatch_process_event(irp: &IRP) {
     let process_event = process_event as *const sysmon_common::ProcessNotify;
     let process_event = unsafe { &*process_event };
 
-    kd_print_ln!("central: process event: pid - 0x%llx", process_event.pid);
+    let ProcessEventType::Start(start_info) = process_event.event else {
+        kd_print_ln!("central: process exit: pid - 0x%llx", process_event.pid);
+        return;
+    };
 
-    let notify = process_event.ps_create_notify_info as *const PS_CREATE_NOTIFY_INFO;
-    if notify.is_null() {
-        kd_print_ln!("central: process exit");
+    let image_path = if let Some(image_path) = start_info.image_path {
+        win::to_unicode_string(image_path)
     } else {
-        kd_print_ln!("central: process start");
-        let notify = unsafe { &*notify };
-        trace_process_notify_info(notify);
-    }
-}
+        UNICODE_STRING::default()
+    };
+    let command_line = if let Some(command_line) = start_info.command_line {
+        win::to_unicode_string(command_line)
+    } else {
+        UNICODE_STRING::default()
+    };
 
-fn trace_process_notify_info(info: &PS_CREATE_NOTIFY_INFO) {
     kd_print_ln!(
-        "central: parent PID: %p; creating PID: %p; creating TID: %p",
-        info.ParentProcessId,
-        info.CreatingThreadId.UniqueProcess,
-        info.CreatingThreadId.UniqueThread
+        "central: process start: pid - %p; ppid - %p; image path - %wZ; command_line - %wZ",
+        process_event.pid,
+        start_info.ppid,
+        &raw const image_path,
+        &raw const command_line
     );
-
-    let img = info.ImageFileName;
-    if !img.is_null() {
-        kd_print_ln!("central: process image - %wZ", img);
-    }
-
-    let cmd = info.CommandLine;
-    if !cmd.is_null() {
-        kd_print_ln!("central: cmd line - %wZ", cmd);
-    }
 }
