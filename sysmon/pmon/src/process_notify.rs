@@ -1,11 +1,13 @@
+use core::slice;
+
 use win::{
-    kd_print_ln, PsSetCreateProcessNotifyRoutineEx, FALSE, HANDLE, NTSTATUS, PEPROCESS,
-    PPS_CREATE_NOTIFY_INFO, STATUS_SUCCESS, TRUE,
+    FALSE, HANDLE, NTSTATUS, PEPROCESS, PPS_CREATE_NOTIFY_INFO, PsSetCreateProcessNotifyRoutineEx,
+    STATUS_SUCCESS, TRUE, kd_print_ln,
 };
 
 use crate::driver;
 
-use sysmon_common::ProcessNotify;
+use sysmon_common::{ProcessEventType, ProcessNotify, ProcessStartInfo};
 
 pub struct ProcessCreateNotify {}
 
@@ -38,21 +40,52 @@ impl Drop for ProcessCreateNotify {
 }
 
 unsafe extern "C" fn process_notify(
-    process: PEPROCESS,
+    _process: PEPROCESS,
     pid: HANDLE,
     create_info: PPS_CREATE_NOTIFY_INFO,
 ) {
-    let pn = ProcessNotify {
-        eprocess: process as u64,
-        pid: pid as u64,
-        ps_create_notify_info: create_info as u64,
+    kd_print_ln!(
+        "pmon::process_notify: pid - %p; create info - %p",
+        pid,
+        create_info
+    );
+
+    if create_info.is_null() {
+        let pn = ProcessNotify {
+            pid: pid,
+            event: ProcessEventType::Exit,
+        };
+
+        driver::get_driver().send_process_event_to_central(&pn);
+        return;
     };
 
-    kd_print_ln!(
-        "process_notify: pid - 0x%llx; create info - 0x%llx",
-        pn.pid,
-        pn.ps_create_notify_info
-    );
+    let create_info = unsafe { &*create_info };
+    let img_path = if create_info.ImageFileName.is_null() {
+        None
+    } else {
+        let img = unsafe { &*create_info.ImageFileName };
+        Some(unsafe { slice::from_raw_parts(img.Buffer, (img.Length / 2) as usize) })
+    };
+
+    let command_line = if create_info.CommandLine.is_null() {
+        None
+    } else {
+        let command_line = unsafe { &*create_info.CommandLine };
+        Some(unsafe {
+            slice::from_raw_parts(command_line.Buffer, (command_line.Length / 2) as usize)
+        })
+    };
+
+    let si = ProcessStartInfo {
+        ppid: create_info.ParentProcessId,
+        image_path: img_path,
+        command_line: command_line,
+    };
+    let pn = ProcessNotify {
+        pid: pid,
+        event: ProcessEventType::Start(&si),
+    };
 
     driver::get_driver().send_process_event_to_central(&pn);
 }
