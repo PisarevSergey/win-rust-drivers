@@ -5,6 +5,7 @@ use core::option::Option;
 
 pub const CENTRAL_CDO_NAME: &[u16] = wchar::wchz!(r"\Device\central_cdo");
 pub const CENTRAL_DOS_NAME: &[u16] = wchar::wchz!(r"\DosDevices\central_cdo");
+pub const CENTRAL_WIN32_NAME: &[u16] = wchar::wchz!(r"\\.\central_cdo");
 
 pub const IOCTL_CENTRAL_PROCESS_START_STOP_NOTIFY: u32 =
     ctl_code(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_WRITE_DATA);
